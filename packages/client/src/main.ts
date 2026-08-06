@@ -4,15 +4,20 @@ import { createIsometricCamera, fitCameraToViewport } from './render/isometricCa
 import { createPlaceholderWorld, createTemporaryLighting } from './render/placeholderWorld';
 import { connectToSimulation } from './sim/simConnection';
 
-const canvas = document.querySelector<HTMLCanvasElement>('#viewport');
-if (canvas === null) {
-  throw new Error('Missing #viewport canvas in index.html');
+/**
+ * Returns the element or refuses to continue. Narrowing a nullable const does
+ * not survive into a closure, and a missing element is a broken build anyway.
+ */
+function requireElement<T extends Element>(selector: string): T {
+  const element = document.querySelector<T>(selector);
+  if (element === null) {
+    throw new Error(`Missing ${selector} in index.html`);
+  }
+  return element;
 }
 
-const status = document.querySelector<HTMLElement>('#status');
-if (status === null) {
-  throw new Error('Missing #status element in index.html');
-}
+const canvas = requireElement<HTMLCanvasElement>('#viewport');
+const status = requireElement<HTMLElement>('#status');
 
 const renderer = new WebGLRenderer({ canvas, antialias: true });
 
@@ -34,15 +39,26 @@ function resizeToWindow(): void {
 resizeToWindow();
 window.addEventListener('resize', resizeToWindow);
 
-// Stays this way unless the simulation answers, so silence is visible.
-status.textContent = 'sim: brak połączenia';
+let connected = false;
+let latestTick = 0;
+
+function showConnectionStatus(): void {
+  // Stays on the failure text unless the simulation answers, so silence is visible.
+  status.textContent = connected ? `sim: połączony · tick ${latestTick}` : 'sim: brak połączenia';
+}
+
+showConnectionStatus();
 
 const simulation = connectToSimulation((message) => {
   switch (message.type) {
     case 'ready':
-      status.textContent = 'sim: połączony';
+      connected = true;
+      break;
+    case 'tick':
+      latestTick = message.tick;
       break;
   }
+  showConnectionStatus();
 });
 
 simulation.send({ type: 'hello' });

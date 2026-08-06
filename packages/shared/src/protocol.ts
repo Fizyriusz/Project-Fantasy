@@ -11,4 +11,6 @@
 export type ClientToSimMessage = { readonly type: 'hello' };
 
 /** Simulation answers with snapshots and events. */
-export type SimToClientMessage = { readonly type: 'ready' };
+export type SimToClientMessage =
+  | { readonly type: 'ready' }
+  | { readonly type: 'tick'; readonly tick: number };

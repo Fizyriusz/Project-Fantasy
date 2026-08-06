@@ -9,15 +9,31 @@ import type { ClientToSimMessage, SimToClientMessage } from '@fantasy/shared';
  */
 export interface Simulation {
   receive(message: ClientToSimMessage): readonly SimToClientMessage[];
+
+  /**
+   * Advances the world by exactly one tick.
+   *
+   * Takes no elapsed time on purpose: a tick is a tick (docs/02-architektura.md).
+   * Deciding *when* to call this is the caller's job, which is what keeps the
+   * simulation identical under a browser timer, a server loop or a test.
+   */
+  tick(): readonly SimToClientMessage[];
 }
 
 export function createSimulation(): Simulation {
+  let currentTick = 0;
+
   return {
     receive(message: ClientToSimMessage): readonly SimToClientMessage[] {
       switch (message.type) {
         case 'hello':
           return [{ type: 'ready' }];
       }
+    },
+
+    tick(): readonly SimToClientMessage[] {
+      currentTick += 1;
+      return [{ type: 'tick', tick: currentTick }];
     },
   };
 }
