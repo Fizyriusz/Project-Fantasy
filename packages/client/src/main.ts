@@ -2,10 +2,16 @@ import { Color, Scene, WebGLRenderer } from 'three';
 
 import { createIsometricCamera, fitCameraToViewport } from './render/isometricCamera';
 import { createPlaceholderWorld, createTemporaryLighting } from './render/placeholderWorld';
+import { connectToSimulation } from './sim/simConnection';
 
 const canvas = document.querySelector<HTMLCanvasElement>('#viewport');
 if (canvas === null) {
   throw new Error('Missing #viewport canvas in index.html');
+}
+
+const status = document.querySelector<HTMLElement>('#status');
+if (status === null) {
+  throw new Error('Missing #status element in index.html');
 }
 
 const renderer = new WebGLRenderer({ canvas, antialias: true });
@@ -27,6 +33,19 @@ function resizeToWindow(): void {
 
 resizeToWindow();
 window.addEventListener('resize', resizeToWindow);
+
+// Stays this way unless the simulation answers, so silence is visible.
+status.textContent = 'sim: brak połączenia';
+
+const simulation = connectToSimulation((message) => {
+  switch (message.type) {
+    case 'ready':
+      status.textContent = 'sim: połączony';
+      break;
+  }
+});
+
+simulation.send({ type: 'hello' });
 
 renderer.setAnimationLoop(() => {
   renderer.render(scene, camera);

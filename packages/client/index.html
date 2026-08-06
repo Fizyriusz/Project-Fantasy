@@ -16,10 +16,20 @@
       canvas {
         display: block;
       }
+
+      #status {
+        position: fixed;
+        top: 8px;
+        left: 10px;
+        color: #8d968a;
+        font: 13px/1.4 ui-monospace, monospace;
+        pointer-events: none;
+      }
     </style>
   </head>
   <body>
     <canvas id="viewport"></canvas>
+    <div id="status"></div>
     <script type="module" src="/src/main.ts"></script>
   </body>
 </html>
