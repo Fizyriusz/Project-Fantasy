@@ -13,6 +13,9 @@ dist/
 npm-debug.log*
 pnpm-debug.log*
 
+# Local tuning experiments from the development panel
+tuning.local.json
+
 # Environment
 .env
 .env.local

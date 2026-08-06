@@ -11,6 +11,9 @@ import {
 } from './render/placeholderWorld';
 import { createPositionInterpolator } from './render/positionInterpolator';
 import { connectToSimulation } from './sim/simConnection';
+import { createTuningPanel } from './tuning/tuningPanel';
+import { createTuningSaver, loadTuning } from './tuning/tuningStorage';
+import { DEFAULT_TUNING, type TuningValues } from './tuning/tuningValues';
 
 /**
  * Returns the element or refuses to continue. Narrowing a nullable const does
@@ -26,6 +29,7 @@ function requireElement<T extends Element>(selector: string): T {
 
 const canvas = requireElement<HTMLCanvasElement>('#viewport');
 const status = requireElement<HTMLElement>('#status');
+const tuningHost = requireElement<HTMLElement>('#tuning');
 
 const renderer = new WebGLRenderer({ canvas, antialias: true });
 
@@ -97,6 +101,41 @@ listenForCameraRotation((quarterTurns) => {
   // still walking the old way until it hears otherwise.
   sendMoveIntent();
 });
+
+const saveTuning = createTuningSaver();
+
+function applyTuning(values: TuningValues): void {
+  simulation.send({
+    type: 'tune',
+    player: {
+      walkSpeedMetresPerSecond: values.walkSpeedMetresPerSecond,
+      radiusMetres: values.playerRadiusMetres,
+    },
+  });
+
+  view.setViewHeight(values.cameraViewHeightMetres);
+  view.setRotationDuration(values.cameraRotationDurationMs);
+  playerPosition.setEnabled(values.interpolation);
+
+  // The stand-in was built at the default footprint, so scaling keeps what you
+  // see the same size as what collides.
+  const footprintScale = values.playerRadiusMetres / DEFAULT_TUNING.playerRadiusMetres;
+  character.scale.set(footprintScale, 1, footprintScale);
+}
+
+if (import.meta.env.DEV) {
+  void loadTuning().then((values) => {
+    createTuningPanel(tuningHost, values, (changed) => {
+      applyTuning(changed);
+      saveTuning(changed);
+    });
+  });
+} else {
+  // A tuning panel is scaffolding. It has no business in a built game, and the
+  // endpoint it saves to does not exist there anyway.
+  tuningHost.remove();
+  applyTuning(DEFAULT_TUNING);
+}
 
 renderer.setAnimationLoop(() => {
   const now = performance.now();

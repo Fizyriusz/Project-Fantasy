@@ -19,14 +19,26 @@ export interface PositionInterpolator {
 
   /** Null until the first snapshot arrives, so the caller draws nothing invented. */
   sample(nowMs: number): GroundPosition | null;
+
+  /**
+   * Turning this off draws the newest snapshot as-is: twenty steps a second,
+   * but with nothing held back. Exists so the 50 ms can be felt rather than
+   * argued about.
+   */
+  setEnabled(enabled: boolean): void;
 }
 
 export function createPositionInterpolator(): PositionInterpolator {
   let previous: GroundPosition | null = null;
   let latest: GroundPosition | null = null;
   let latestArrivedAtMs = 0;
+  let enabled = true;
 
   return {
+    setEnabled(value: boolean): void {
+      enabled = value;
+    },
+
     push(position: GroundPosition, atMs: number): void {
       previous = latest;
       latest = position;
@@ -37,7 +49,7 @@ export function createPositionInterpolator(): PositionInterpolator {
       if (latest === null) {
         return null;
       }
-      if (previous === null) {
+      if (previous === null || !enabled) {
         return latest;
       }
 

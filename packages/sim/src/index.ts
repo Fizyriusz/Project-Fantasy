@@ -29,7 +29,10 @@ export interface Simulation {
 }
 
 export function createSimulation(): Simulation {
-  const walkMetresPerTick = WORLD_DATA.player.walkSpeedMetresPerSecond / TICK_RATE_HZ;
+  // Mutable because the tuning panel adjusts them while the world runs. The
+  // data file remains the only source of the starting values.
+  let walkSpeedMetresPerSecond = WORLD_DATA.player.walkSpeedMetresPerSecond;
+  let playerRadiusMetres = WORLD_DATA.player.radiusMetres;
 
   let currentTick = 0;
 
@@ -53,11 +56,11 @@ export function createSimulation(): Simulation {
 
     // Dividing by the length is what makes diagonal walking the same speed as
     // straight walking, whatever the client happened to send.
-    const step = walkMetresPerTick / length;
+    const step = walkSpeedMetresPerSecond / TICK_RATE_HZ / length;
     player.x += intentX * step;
     player.z += intentZ * step;
 
-    resolveWallCollisions(player, WORLD_DATA.player.radiusMetres, WORLD_DATA.walls);
+    resolveWallCollisions(player, playerRadiusMetres, WORLD_DATA.walls);
   }
 
   function snapshotPlayer(): GroundPosition {
@@ -74,6 +77,10 @@ export function createSimulation(): Simulation {
         case 'moveIntent':
           intentX = message.direction.x;
           intentZ = message.direction.z;
+          return [];
+        case 'tune':
+          walkSpeedMetresPerSecond = message.player.walkSpeedMetresPerSecond;
+          playerRadiusMetres = message.player.radiusMetres;
           return [];
       }
     },

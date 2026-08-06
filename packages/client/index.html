@@ -25,11 +25,82 @@
         font: 13px/1.4 ui-monospace, monospace;
         pointer-events: none;
       }
+
+      #tuning {
+        position: fixed;
+        top: 8px;
+        right: 10px;
+        width: 290px;
+        padding: 6px 10px 8px;
+        border: 1px solid #3d443b;
+        border-radius: 4px;
+        background: rgba(20, 24, 22, 0.82);
+        color: #97a094;
+        font: 12px/1.5 ui-monospace, monospace;
+      }
+
+      .tuning-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding-bottom: 4px;
+        border-bottom: 1px solid #333a32;
+      }
+
+      .tuning-header span {
+        cursor: pointer;
+        user-select: none;
+      }
+
+      .tuning-header button {
+        border: 1px solid #454d43;
+        border-radius: 3px;
+        background: transparent;
+        color: #97a094;
+        font: inherit;
+        cursor: pointer;
+        padding: 0 6px;
+      }
+
+      #tuning.tuning-collapsed .tuning-body {
+        display: none;
+      }
+
+      .tuning-row {
+        display: block;
+        padding-top: 7px;
+      }
+
+      .tuning-row input[type='range'] {
+        width: 100%;
+        margin: 2px 0 0;
+        accent-color: #8fa07f;
+      }
+
+      .tuning-toggle {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+
+      .tuning-caption {
+        display: block;
+      }
+
+      .tuning-readout {
+        display: block;
+        color: #6f7a6c;
+      }
+
+      .tuning-changed {
+        color: #cbbf7a;
+      }
     </style>
   </head>
   <body>
     <canvas id="viewport"></canvas>
     <div id="status"></div>
+    <div id="tuning"></div>
     <script type="module" src="/src/main.ts"></script>
   </body>
 </html>

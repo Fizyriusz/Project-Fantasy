@@ -6,7 +6,7 @@ import type { GroundDirection } from '@fantasy/shared';
 // docs/02-architektura.md asks for one scale fixed from the start.
 
 /** Metres that fit vertically in the viewport. Lower value = closer camera. */
-const VIEW_HEIGHT_METRES = 24;
+export const DEFAULT_VIEW_HEIGHT_METRES = 24;
 
 /** Angle above the horizon. docs/01-wizja.md asks for roughly 45 degrees. */
 const ELEVATION_RADIANS = Math.PI / 4;
@@ -27,7 +27,7 @@ const QUARTER_TURN_RADIANS = Math.PI / 2;
 const DISTANCE_METRES = 60;
 
 /** Long enough to follow the turn with your eyes, short enough not to wait. */
-const ROTATION_DURATION_MS = 220;
+export const DEFAULT_ROTATION_DURATION_MS = 220;
 
 const TARGET = new Vector3(0, 0, 0);
 
@@ -53,6 +53,12 @@ export interface IsometricView {
 
   fitToViewport(aspectRatio: number): void;
 
+  /** How many metres fit vertically. Lower is closer. */
+  setViewHeight(metres: number): void;
+
+  /** Zero turns the quarter turn into an instant jump. */
+  setRotationDuration(milliseconds: number): void;
+
   /**
    * Converts "towards the top of the screen" into a world direction.
    *
@@ -74,6 +80,10 @@ export function createIsometricView(aspectRatio: number): IsometricView {
   let currentAzimuth = BASE_AZIMUTH_RADIANS;
   let rotationStartedAtMs = 0;
 
+  let viewHeightMetres = DEFAULT_VIEW_HEIGHT_METRES;
+  let rotationDurationMs = DEFAULT_ROTATION_DURATION_MS;
+  let lastAspectRatio = aspectRatio;
+
   function placeCamera(): void {
     const horizontalDistance = DISTANCE_METRES * Math.cos(ELEVATION_RADIANS);
     camera.position.set(
@@ -89,9 +99,11 @@ export function createIsometricView(aspectRatio: number): IsometricView {
   }
 
   function fitToViewport(aspectRatio: number): void {
+    lastAspectRatio = aspectRatio;
+
     // Keeps the visible height constant and lets width follow the window, so
     // resizing reveals more world instead of stretching what is already there.
-    const halfHeight = VIEW_HEIGHT_METRES / 2;
+    const halfHeight = viewHeightMetres / 2;
     const halfWidth = halfHeight * aspectRatio;
 
     camera.left = -halfWidth;
@@ -119,7 +131,10 @@ export function createIsometricView(aspectRatio: number): IsometricView {
         return;
       }
 
-      const progress = Math.min((nowMs - rotationStartedAtMs) / ROTATION_DURATION_MS, 1);
+      const progress =
+        rotationDurationMs <= 0
+          ? 1
+          : Math.min((nowMs - rotationStartedAtMs) / rotationDurationMs, 1);
       // Smoothstep: leaves and arrives gently, so the turn does not snap at
       // either end.
       const eased = progress * progress * (3 - 2 * progress);
@@ -130,6 +145,15 @@ export function createIsometricView(aspectRatio: number): IsometricView {
     },
 
     fitToViewport,
+
+    setViewHeight(metres: number): void {
+      viewHeightMetres = metres;
+      fitToViewport(lastAspectRatio);
+    },
+
+    setRotationDuration(milliseconds: number): void {
+      rotationDurationMs = milliseconds;
+    },
 
     toWorldDirection(screen: ScreenDirection): GroundDirection {
       const sin = Math.sin(targetAzimuth);

@@ -29,10 +29,23 @@ export interface GroundDirection {
   readonly z: number;
 }
 
+/**
+ * Values the tuning panel is allowed to change while the game runs.
+ *
+ * A development affordance, not a game mechanic: it exists so numbers can be
+ * felt rather than argued about. Whatever wins ends up written into the data
+ * file by hand.
+ */
+export interface PlayerTuning {
+  readonly walkSpeedMetresPerSecond: number;
+  readonly radiusMetres: number;
+}
+
 /** Client speaks first and only ever states intent, never state. */
 export type ClientToSimMessage =
   | { readonly type: 'hello' }
-  | { readonly type: 'moveIntent'; readonly direction: GroundDirection };
+  | { readonly type: 'moveIntent'; readonly direction: GroundDirection }
+  | { readonly type: 'tune'; readonly player: PlayerTuning };
 
 /** Simulation answers with snapshots and events. */
 export type SimToClientMessage =
