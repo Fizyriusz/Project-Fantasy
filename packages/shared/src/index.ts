@@ -1,4 +1,5 @@
 export * from './protocol';
+export * from './data/world';
 
 /**
  * Fixed simulation tick rate. See docs/02-architektura.md — logic never depends

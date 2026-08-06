@@ -1,4 +1,9 @@
-import type { ClientToSimMessage, SimToClientMessage } from '@fantasy/shared';
+import {
+  WORLD_DATA,
+  type ClientToSimMessage,
+  type GroundPosition,
+  type SimToClientMessage,
+} from '@fantasy/shared';
 
 /**
  * The whole simulation, reachable only through messages.
@@ -23,6 +28,19 @@ export interface Simulation {
 export function createSimulation(): Simulation {
   let currentTick = 0;
 
+  // Mutable on purpose: this is the authoritative position, and nothing outside
+  // the simulation is allowed to hold a reference to it.
+  const player = {
+    x: WORLD_DATA.player.startX,
+    z: WORLD_DATA.player.startZ,
+  };
+
+  function snapshotPlayer(): GroundPosition {
+    // Copied, never handed out directly, so a later tick cannot rewrite a
+    // snapshot the client already believes in.
+    return { x: player.x, z: player.z };
+  }
+
   return {
     receive(message: ClientToSimMessage): readonly SimToClientMessage[] {
       switch (message.type) {
@@ -33,7 +51,7 @@ export function createSimulation(): Simulation {
 
     tick(): readonly SimToClientMessage[] {
       currentTick += 1;
-      return [{ type: 'tick', tick: currentTick }];
+      return [{ type: 'snapshot', tick: currentTick, player: snapshotPlayer() }];
     },
   };
 }

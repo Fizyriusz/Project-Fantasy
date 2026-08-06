@@ -1,7 +1,11 @@
 import { Color, Scene, WebGLRenderer } from 'three';
 
 import { createIsometricCamera, fitCameraToViewport } from './render/isometricCamera';
-import { createPlaceholderWorld, createTemporaryLighting } from './render/placeholderWorld';
+import {
+  createCharacterStandIn,
+  createPlaceholderGround,
+  createTemporaryLighting,
+} from './render/placeholderWorld';
 import { connectToSimulation } from './sim/simConnection';
 
 /**
@@ -21,9 +25,12 @@ const status = requireElement<HTMLElement>('#status');
 
 const renderer = new WebGLRenderer({ canvas, antialias: true });
 
+const character = createCharacterStandIn();
+
 const scene = new Scene();
 scene.background = new Color(0x1b1f1d);
-scene.add(createPlaceholderWorld());
+scene.add(createPlaceholderGround());
+scene.add(character);
 scene.add(createTemporaryLighting());
 
 const camera = createIsometricCamera(window.innerWidth / window.innerHeight);
@@ -54,8 +61,12 @@ const simulation = connectToSimulation((message) => {
     case 'ready':
       connected = true;
       break;
-    case 'tick':
+    case 'snapshot':
       latestTick = message.tick;
+      // The client draws what it is told and decides nothing about where the
+      // character is. Height stays untouched — that belongs to the model.
+      character.position.x = message.player.x;
+      character.position.z = message.player.z;
       break;
   }
   showConnectionStatus();

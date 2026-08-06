@@ -16,16 +16,15 @@ const CHARACTER_HEIGHT_METRES = 1.8;
 const CHARACTER_DEPTH_METRES = 0.6;
 
 /**
- * Throwaway geometry for Etap 0 krok 1 — just enough on screen to judge whether
- * the camera angle and the metre scale look right. The simulation takes over
- * ownership of everything here in krok 4.
+ * Throwaway scenery: the flat plate and a one-metre ruler to judge scale by.
+ * Nothing here moves, so the simulation does not know it exists. The real tile
+ * grid is Etap 1.
  */
-export function createPlaceholderWorld(): Group {
-  const world = new Group();
-  world.add(createGround());
-  world.add(createGrid());
-  world.add(createCharacterStandIn());
-  return world;
+export function createPlaceholderGround(): Group {
+  const ground = new Group();
+  ground.add(createGround());
+  ground.add(createGrid());
+  return ground;
 }
 
 function createGround(): Mesh {
@@ -45,7 +44,13 @@ function createGrid(): GridHelper {
   return grid;
 }
 
-function createCharacterStandIn(): Mesh {
+/**
+ * Stand-in for the character. Its position on the ground belongs to the
+ * simulation; how tall the shape is and how high it has to sit to look like it
+ * stands on the floor is purely a rendering concern, which is why the
+ * simulation only ever sends x and z.
+ */
+export function createCharacterStandIn(): Mesh {
   const box = new Mesh(
     new BoxGeometry(CHARACTER_WIDTH_METRES, CHARACTER_HEIGHT_METRES, CHARACTER_DEPTH_METRES),
     new MeshLambertMaterial({ color: 0xc8c3b8 }),
