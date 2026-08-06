@@ -1,0 +1,3 @@
+# Line endings are decided by the repository, not by whoever cloned it.
+# Overrides the machine-level core.autocrlf so Windows and Linux checkouts match.
+* text=auto eol=lf
