@@ -1,13 +1,14 @@
 import { Color, Scene, WebGLRenderer } from 'three';
 
+import { listenForCameraRotation } from './input/cameraRotation';
 import { listenForMovementIntent } from './input/movementIntent';
-import { createIsometricCamera, fitCameraToViewport } from './render/isometricCamera';
-import { createPositionInterpolator } from './render/positionInterpolator';
+import { createIsometricView, type ScreenDirection } from './render/isometricCamera';
 import {
   createCharacterStandIn,
   createPlaceholderGround,
   createTemporaryLighting,
 } from './render/placeholderWorld';
+import { createPositionInterpolator } from './render/positionInterpolator';
 import { connectToSimulation } from './sim/simConnection';
 
 /**
@@ -35,14 +36,14 @@ scene.add(createPlaceholderGround());
 scene.add(character);
 scene.add(createTemporaryLighting());
 
-const camera = createIsometricCamera(window.innerWidth / window.innerHeight);
+const view = createIsometricView(window.innerWidth / window.innerHeight);
 
 function resizeToWindow(): void {
   // Capped because a high-DPI display would otherwise render several times the
   // pixels for a difference nobody can see at this camera distance.
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
   renderer.setSize(window.innerWidth, window.innerHeight);
-  fitCameraToViewport(camera, window.innerWidth / window.innerHeight);
+  view.fitToViewport(window.innerWidth / window.innerHeight);
 }
 
 resizeToWindow();
@@ -77,17 +78,35 @@ const simulation = connectToSimulation((message) => {
 
 simulation.send({ type: 'hello' });
 
+let screenIntent: ScreenDirection = { forward: 0, right: 0 };
+
+function sendMoveIntent(): void {
+  simulation.send({ type: 'moveIntent', direction: view.toWorldDirection(screenIntent) });
+}
+
 listenForMovementIntent((direction) => {
-  simulation.send({ type: 'moveIntent', direction });
+  screenIntent = direction;
+  sendMoveIntent();
+});
+
+listenForCameraRotation((quarterTurns) => {
+  view.rotate(quarterTurns, performance.now());
+  // Held keys now point somewhere else in the world, and the simulation is
+  // still walking the old way until it hears otherwise.
+  sendMoveIntent();
 });
 
 renderer.setAnimationLoop(() => {
-  const position = playerPosition.sample(performance.now());
+  const now = performance.now();
+
+  view.update(now);
+
+  const position = playerPosition.sample(now);
   if (position !== null) {
     // Height stays untouched — that belongs to the model, not the simulation.
     character.position.x = position.x;
     character.position.z = position.z;
   }
 
-  renderer.render(scene, camera);
+  renderer.render(scene, view.camera);
 });

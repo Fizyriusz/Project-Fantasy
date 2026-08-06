@@ -1,18 +1,17 @@
-import type { GroundDirection } from '@fantasy/shared';
+import type { ScreenDirection } from '../render/isometricCamera';
 
 /**
  * Keyed by physical key position rather than by the letter produced, so the
  * keys stay under the same fingers on any keyboard layout.
  *
- * These are world axes for now. Turning them to face the camera is krok 7 —
- * until then a single key walks diagonally across the screen, because the
- * camera itself sits on a diagonal.
+ * Directions are stated in terms of the screen. Which way that points in the
+ * world depends on where the camera is standing, and only the camera knows.
  */
-const KEY_DIRECTIONS: ReadonlyMap<string, GroundDirection> = new Map([
-  ['KeyW', { x: 0, z: -1 }],
-  ['KeyS', { x: 0, z: 1 }],
-  ['KeyA', { x: -1, z: 0 }],
-  ['KeyD', { x: 1, z: 0 }],
+const KEY_DIRECTIONS: ReadonlyMap<string, ScreenDirection> = new Map([
+  ['KeyW', { forward: 1, right: 0 }],
+  ['KeyS', { forward: -1, right: 0 }],
+  ['KeyA', { forward: 0, right: -1 }],
+  ['KeyD', { forward: 0, right: 1 }],
 ]);
 
 /**
@@ -22,30 +21,30 @@ const KEY_DIRECTIONS: ReadonlyMap<string, GroundDirection> = new Map([
  * it is told something else, so pressing a key is a single message rather than
  * a stream of them.
  */
-export function listenForMovementIntent(onChange: (direction: GroundDirection) => void): void {
+export function listenForMovementIntent(onChange: (direction: ScreenDirection) => void): void {
   const heldKeys = new Set<string>();
-  let lastX = 0;
-  let lastZ = 0;
+  let lastForward = 0;
+  let lastRight = 0;
 
   function publishIfChanged(): void {
-    let x = 0;
-    let z = 0;
+    let forward = 0;
+    let right = 0;
 
     for (const code of heldKeys) {
       const direction = KEY_DIRECTIONS.get(code);
       if (direction !== undefined) {
-        x += direction.x;
-        z += direction.z;
+        forward += direction.forward;
+        right += direction.right;
       }
     }
 
-    if (x === lastX && z === lastZ) {
+    if (forward === lastForward && right === lastRight) {
       return;
     }
 
-    lastX = x;
-    lastZ = z;
-    onChange({ x, z });
+    lastForward = forward;
+    lastRight = right;
+    onChange({ forward, right });
   }
 
   window.addEventListener('keydown', (event) => {
