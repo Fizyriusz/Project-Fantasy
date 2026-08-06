@@ -16,8 +16,23 @@ export interface GroundPosition {
   readonly z: number;
 }
 
+/**
+ * Which way the player is asking to walk, on the ground plane. Zero means
+ * "stand still".
+ *
+ * The length carries no meaning: the simulation normalises it before use and
+ * never lets it become a speed. Holding two keys must not walk faster than
+ * one, and a client must not be able to ask for it either.
+ */
+export interface GroundDirection {
+  readonly x: number;
+  readonly z: number;
+}
+
 /** Client speaks first and only ever states intent, never state. */
-export type ClientToSimMessage = { readonly type: 'hello' };
+export type ClientToSimMessage =
+  | { readonly type: 'hello' }
+  | { readonly type: 'moveIntent'; readonly direction: GroundDirection };
 
 /** Simulation answers with snapshots and events. */
 export type SimToClientMessage =

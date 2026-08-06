@@ -1,5 +1,6 @@
 import { Color, Scene, WebGLRenderer } from 'three';
 
+import { listenForMovementIntent } from './input/movementIntent';
 import { createIsometricCamera, fitCameraToViewport } from './render/isometricCamera';
 import {
   createCharacterStandIn,
@@ -73,6 +74,10 @@ const simulation = connectToSimulation((message) => {
 });
 
 simulation.send({ type: 'hello' });
+
+listenForMovementIntent((direction) => {
+  simulation.send({ type: 'moveIntent', direction });
+});
 
 renderer.setAnimationLoop(() => {
   renderer.render(scene, camera);
