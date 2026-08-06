@@ -2,6 +2,7 @@ import { Color, Scene, WebGLRenderer } from 'three';
 
 import { listenForMovementIntent } from './input/movementIntent';
 import { createIsometricCamera, fitCameraToViewport } from './render/isometricCamera';
+import { createPositionInterpolator } from './render/positionInterpolator';
 import {
   createCharacterStandIn,
   createPlaceholderGround,
@@ -47,6 +48,8 @@ function resizeToWindow(): void {
 resizeToWindow();
 window.addEventListener('resize', resizeToWindow);
 
+const playerPosition = createPositionInterpolator();
+
 let connected = false;
 let latestTick = 0;
 
@@ -65,9 +68,8 @@ const simulation = connectToSimulation((message) => {
     case 'snapshot':
       latestTick = message.tick;
       // The client draws what it is told and decides nothing about where the
-      // character is. Height stays untouched — that belongs to the model.
-      character.position.x = message.player.x;
-      character.position.z = message.player.z;
+      // character is. It only chooses how to fill the gaps between snapshots.
+      playerPosition.push(message.player, performance.now());
       break;
   }
   showConnectionStatus();
@@ -80,5 +82,12 @@ listenForMovementIntent((direction) => {
 });
 
 renderer.setAnimationLoop(() => {
+  const position = playerPosition.sample(performance.now());
+  if (position !== null) {
+    // Height stays untouched — that belongs to the model, not the simulation.
+    character.position.x = position.x;
+    character.position.z = position.z;
+  }
+
   renderer.render(scene, camera);
 });
