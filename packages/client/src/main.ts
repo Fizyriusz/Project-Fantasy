@@ -7,6 +7,7 @@ import {
   createCharacterStandIn,
   createPlaceholderGround,
   createTemporaryLighting,
+  createWalls,
 } from './render/placeholderWorld';
 import { createPositionInterpolator } from './render/positionInterpolator';
 import { connectToSimulation } from './sim/simConnection';
@@ -33,6 +34,7 @@ const character = createCharacterStandIn();
 const scene = new Scene();
 scene.background = new Color(0x1b1f1d);
 scene.add(createPlaceholderGround());
+scene.add(createWalls());
 scene.add(character);
 scene.add(createTemporaryLighting());
 

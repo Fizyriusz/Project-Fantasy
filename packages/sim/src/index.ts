@@ -6,6 +6,8 @@ import {
   type SimToClientMessage,
 } from '@fantasy/shared';
 
+import { resolveWallCollisions } from './collision';
+
 /**
  * The whole simulation, reachable only through messages.
  *
@@ -54,6 +56,8 @@ export function createSimulation(): Simulation {
     const step = walkMetresPerTick / length;
     player.x += intentX * step;
     player.z += intentZ * step;
+
+    resolveWallCollisions(player, WORLD_DATA.player.radiusMetres, WORLD_DATA.walls);
   }
 
   function snapshotPlayer(): GroundPosition {
