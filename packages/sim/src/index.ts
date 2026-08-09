@@ -32,6 +32,8 @@ export function createSimulation(): Simulation {
   // Mutable because the tuning panel adjusts them while the world runs. The
   // data file remains the only source of the starting values.
   let walkSpeedMetresPerSecond = WORLD_DATA.player.walkSpeedMetresPerSecond;
+  let accelerationMetresPerSecondSquared = WORLD_DATA.player.accelerationMetresPerSecondSquared;
+  let decelerationMetresPerSecondSquared = WORLD_DATA.player.decelerationMetresPerSecondSquared;
   let playerRadiusMetres = WORLD_DATA.player.radiusMetres;
 
   let currentTick = 0;
@@ -48,17 +50,41 @@ export function createSimulation(): Simulation {
   let intentX = 0;
   let intentZ = 0;
 
+  // Metres per second. The character carries momentum now, so letting go of a
+  // key is a request to stop rather than a stop.
+  let velocityX = 0;
+  let velocityZ = 0;
+
   function walk(): void {
     const length = Math.hypot(intentX, intentZ);
-    if (length === 0) {
+    if (length === 0 && velocityX === 0 && velocityZ === 0) {
       return;
     }
 
     // Dividing by the length is what makes diagonal walking the same speed as
     // straight walking, whatever the client happened to send.
-    const step = walkSpeedMetresPerSecond / TICK_RATE_HZ / length;
-    player.x += intentX * step;
-    player.z += intentZ * step;
+    const desiredX = length === 0 ? 0 : (intentX / length) * walkSpeedMetresPerSecond;
+    const desiredZ = length === 0 ? 0 : (intentZ / length) * walkSpeedMetresPerSecond;
+
+    // Starting and turning share the acceleration; only letting go decelerates.
+    const rate =
+      length === 0 ? decelerationMetresPerSecondSquared : accelerationMetresPerSecondSquared;
+    const maxChange = rate / TICK_RATE_HZ;
+
+    const changeX = desiredX - velocityX;
+    const changeZ = desiredZ - velocityZ;
+    const changeLength = Math.hypot(changeX, changeZ);
+
+    if (changeLength <= maxChange) {
+      velocityX = desiredX;
+      velocityZ = desiredZ;
+    } else {
+      velocityX += (changeX / changeLength) * maxChange;
+      velocityZ += (changeZ / changeLength) * maxChange;
+    }
+
+    player.x += velocityX / TICK_RATE_HZ;
+    player.z += velocityZ / TICK_RATE_HZ;
 
     resolveWallCollisions(player, playerRadiusMetres, WORLD_DATA.walls);
   }
@@ -80,6 +106,10 @@ export function createSimulation(): Simulation {
           return [];
         case 'tune':
           walkSpeedMetresPerSecond = message.player.walkSpeedMetresPerSecond;
+          accelerationMetresPerSecondSquared =
+            message.player.accelerationMetresPerSecondSquared;
+          decelerationMetresPerSecondSquared =
+            message.player.decelerationMetresPerSecondSquared;
           playerRadiusMetres = message.player.radiusMetres;
           return [];
       }

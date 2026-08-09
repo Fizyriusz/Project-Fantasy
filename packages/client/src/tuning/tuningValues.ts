@@ -1,14 +1,18 @@
 import { WORLD_DATA } from '@fantasy/shared';
 
 import {
+  DEFAULT_FOLLOW_HALF_LIFE_MS,
   DEFAULT_ROTATION_DURATION_MS,
   DEFAULT_VIEW_HEIGHT_METRES,
 } from '../render/isometricCamera';
 
 export interface TuningValues {
   walkSpeedMetresPerSecond: number;
+  accelerationMetresPerSecondSquared: number;
+  decelerationMetresPerSecondSquared: number;
   playerRadiusMetres: number;
   cameraViewHeightMetres: number;
+  cameraFollowHalfLifeMs: number;
   cameraRotationDurationMs: number;
   interpolation: boolean;
 }
@@ -30,8 +34,11 @@ export interface SliderDefinition {
  */
 export const DEFAULT_TUNING: TuningValues = {
   walkSpeedMetresPerSecond: WORLD_DATA.player.walkSpeedMetresPerSecond,
+  accelerationMetresPerSecondSquared: WORLD_DATA.player.accelerationMetresPerSecondSquared,
+  decelerationMetresPerSecondSquared: WORLD_DATA.player.decelerationMetresPerSecondSquared,
   playerRadiusMetres: WORLD_DATA.player.radiusMetres,
   cameraViewHeightMetres: DEFAULT_VIEW_HEIGHT_METRES,
+  cameraFollowHalfLifeMs: DEFAULT_FOLLOW_HALF_LIFE_MS,
   cameraRotationDurationMs: DEFAULT_ROTATION_DURATION_MS,
   interpolation: true,
 };
@@ -46,12 +53,36 @@ export const SLIDERS: readonly SliderDefinition[] = [
     step: 0.1,
   },
   {
+    key: 'accelerationMetresPerSecondSquared',
+    label: 'Rozpęd',
+    unit: 'm/s²',
+    min: 3,
+    max: 80,
+    step: 1,
+  },
+  {
+    key: 'decelerationMetresPerSecondSquared',
+    label: 'Hamowanie',
+    unit: 'm/s²',
+    min: 3,
+    max: 80,
+    step: 1,
+  },
+  {
     key: 'cameraViewHeightMetres',
     label: 'Przybliżenie kamery',
     unit: 'm w pionie',
     min: 12,
     max: 48,
     step: 1,
+  },
+  {
+    key: 'cameraFollowHalfLifeMs',
+    label: 'Opóźnienie kamery',
+    unit: 'ms',
+    min: 0,
+    max: 400,
+    step: 10,
   },
   {
     key: 'playerRadiusMetres',

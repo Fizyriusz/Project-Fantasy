@@ -76,7 +76,7 @@ const simulation = connectToSimulation((message) => {
       latestTick = message.tick;
       // The client draws what it is told and decides nothing about where the
       // character is. It only chooses how to fill the gaps between snapshots.
-      playerPosition.push(message.player, performance.now());
+      playerPosition.push(message.tick, message.player);
       break;
   }
   showConnectionStatus();
@@ -109,12 +109,15 @@ function applyTuning(values: TuningValues): void {
     type: 'tune',
     player: {
       walkSpeedMetresPerSecond: values.walkSpeedMetresPerSecond,
+      accelerationMetresPerSecondSquared: values.accelerationMetresPerSecondSquared,
+      decelerationMetresPerSecondSquared: values.decelerationMetresPerSecondSquared,
       radiusMetres: values.playerRadiusMetres,
     },
   });
 
   view.setViewHeight(values.cameraViewHeightMetres);
   view.setRotationDuration(values.cameraRotationDurationMs);
+  view.setFollowHalfLife(values.cameraFollowHalfLifeMs);
   playerPosition.setEnabled(values.interpolation);
 
   // The stand-in was built at the default footprint, so scaling keeps what you
@@ -140,14 +143,17 @@ if (import.meta.env.DEV) {
 renderer.setAnimationLoop(() => {
   const now = performance.now();
 
-  view.update(now);
-
   const position = playerPosition.sample(now);
   if (position !== null) {
     // Height stays untouched — that belongs to the model, not the simulation.
     character.position.x = position.x;
     character.position.z = position.z;
+    // Follows the drawn position rather than the raw snapshot, or the camera
+    // would judder twenty times a second while the character glides.
+    view.setTarget(position.x, position.z);
   }
+
+  view.update(now);
 
   renderer.render(scene, view.camera);
 });

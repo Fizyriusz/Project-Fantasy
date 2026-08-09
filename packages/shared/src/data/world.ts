@@ -19,6 +19,14 @@ export interface PlayerData {
   readonly walkSpeedMetresPerSecond: number;
 
   /**
+   * How fast the character reaches walking pace, and how fast it gives it up.
+   * Separate values because starting and stopping do not have to feel alike —
+   * eager to move and slow to halt reads very differently from the reverse.
+   */
+  readonly accelerationMetresPerSecondSquared: number;
+  readonly decelerationMetresPerSecondSquared: number;
+
+  /**
    * Characters collide as circles on the ground plane (docs/02-architektura.md).
    * Nothing about the drawn model affects this.
    */
@@ -49,6 +57,8 @@ export const WORLD_DATA: WorldData = {
     startX: 0,
     startZ: 0,
     walkSpeedMetresPerSecond: 3.5,
+    accelerationMetresPerSecondSquared: 25,
+    decelerationMetresPerSecondSquared: 30,
     radiusMetres: 0.3,
   },
 

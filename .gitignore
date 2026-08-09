@@ -28,6 +28,7 @@ tuning.local.json
 
 # Claude Code local overrides
 .claude/settings.local.json
+.claude/launch.json
 
 # OS
 .DS_Store

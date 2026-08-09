@@ -38,6 +38,8 @@ export interface GroundDirection {
  */
 export interface PlayerTuning {
   readonly walkSpeedMetresPerSecond: number;
+  readonly accelerationMetresPerSecondSquared: number;
+  readonly decelerationMetresPerSecondSquared: number;
   readonly radiusMetres: number;
 }
 

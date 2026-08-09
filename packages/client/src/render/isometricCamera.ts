@@ -29,7 +29,13 @@ const DISTANCE_METRES = 60;
 /** Long enough to follow the turn with your eyes, short enough not to wait. */
 export const DEFAULT_ROTATION_DURATION_MS = 220;
 
-const TARGET = new Vector3(0, 0, 0);
+/**
+ * Time for the camera to cover half the distance to the character. Zero nails
+ * it rigidly to them; larger values let them lead the frame before it catches
+ * up, which is what makes movement read as movement rather than as the world
+ * sliding underneath a fixed point.
+ */
+export const DEFAULT_FOLLOW_HALF_LIFE_MS = 120;
 
 /**
  * What the player is asking for in terms of the screen, before anyone works
@@ -48,7 +54,10 @@ export interface IsometricView {
   /** Starts a quarter turn. Pressing again mid-turn simply adds another. */
   rotate(quarterTurns: 1 | -1, nowMs: number): void;
 
-  /** Advances the turn animation. Call once per drawn frame. */
+  /** Where the camera should be looking. Reached gradually, not immediately. */
+  setTarget(x: number, z: number): void;
+
+  /** Advances the turn animation and the follow. Call once per drawn frame. */
   update(nowMs: number): void;
 
   fitToViewport(aspectRatio: number): void;
@@ -58,6 +67,9 @@ export interface IsometricView {
 
   /** Zero turns the quarter turn into an instant jump. */
   setRotationDuration(milliseconds: number): void;
+
+  /** Zero pins the camera to the character with no lag at all. */
+  setFollowHalfLife(milliseconds: number): void;
 
   /**
    * Converts "towards the top of the screen" into a world direction.
@@ -82,16 +94,27 @@ export function createIsometricView(aspectRatio: number): IsometricView {
 
   let viewHeightMetres = DEFAULT_VIEW_HEIGHT_METRES;
   let rotationDurationMs = DEFAULT_ROTATION_DURATION_MS;
+  let followHalfLifeMs = DEFAULT_FOLLOW_HALF_LIFE_MS;
   let lastAspectRatio = aspectRatio;
+
+  // Where the camera is asked to look, and where it has actually got to.
+  let targetX = 0;
+  let targetZ = 0;
+  let focusX = 0;
+  let focusZ = 0;
+  let lastUpdateMs: number | null = null;
+
+  const focusPoint = new Vector3(0, 0, 0);
 
   function placeCamera(): void {
     const horizontalDistance = DISTANCE_METRES * Math.cos(ELEVATION_RADIANS);
+    focusPoint.set(focusX, 0, focusZ);
     camera.position.set(
-      horizontalDistance * Math.sin(currentAzimuth),
+      focusX + horizontalDistance * Math.sin(currentAzimuth),
       DISTANCE_METRES * Math.sin(ELEVATION_RADIANS),
-      horizontalDistance * Math.cos(currentAzimuth),
+      focusZ + horizontalDistance * Math.cos(currentAzimuth),
     );
-    camera.lookAt(TARGET);
+    camera.lookAt(focusPoint);
     // lookAt refreshes the world matrix before it sets the rotation, so the
     // inverse stays one step behind until something renders. Settle it here, or
     // anything projecting coordinates before the first frame reads stale values.
@@ -126,21 +149,39 @@ export function createIsometricView(aspectRatio: number): IsometricView {
       rotationStartedAtMs = nowMs;
     },
 
+    setTarget(x: number, z: number): void {
+      targetX = x;
+      targetZ = z;
+    },
+
     update(nowMs: number): void {
-      if (currentAzimuth === targetAzimuth) {
-        return;
+      const elapsedMs = lastUpdateMs === null ? 0 : nowMs - lastUpdateMs;
+      lastUpdateMs = nowMs;
+
+      if (currentAzimuth !== targetAzimuth) {
+        const progress =
+          rotationDurationMs <= 0
+            ? 1
+            : Math.min((nowMs - rotationStartedAtMs) / rotationDurationMs, 1);
+        // Smoothstep: leaves and arrives gently, so the turn does not snap at
+        // either end.
+        const eased = progress * progress * (3 - 2 * progress);
+
+        currentAzimuth =
+          progress === 1 ? targetAzimuth : fromAzimuth + (targetAzimuth - fromAzimuth) * eased;
       }
 
-      const progress =
-        rotationDurationMs <= 0
-          ? 1
-          : Math.min((nowMs - rotationStartedAtMs) / rotationDurationMs, 1);
-      // Smoothstep: leaves and arrives gently, so the turn does not snap at
-      // either end.
-      const eased = progress * progress * (3 - 2 * progress);
+      if (followHalfLifeMs <= 0 || elapsedMs <= 0) {
+        focusX = targetX;
+        focusZ = targetZ;
+      } else {
+        // Halving per half-life rather than a fixed fraction per frame, so the
+        // lag feels the same at 30 frames a second as at 144.
+        const caughtUp = 1 - Math.pow(0.5, elapsedMs / followHalfLifeMs);
+        focusX += (targetX - focusX) * caughtUp;
+        focusZ += (targetZ - focusZ) * caughtUp;
+      }
 
-      currentAzimuth =
-        progress === 1 ? targetAzimuth : fromAzimuth + (targetAzimuth - fromAzimuth) * eased;
       placeCamera();
     },
 
@@ -153,6 +194,10 @@ export function createIsometricView(aspectRatio: number): IsometricView {
 
     setRotationDuration(milliseconds: number): void {
       rotationDurationMs = milliseconds;
+    },
+
+    setFollowHalfLife(milliseconds: number): void {
+      followHalfLifeMs = milliseconds;
     },
 
     toWorldDirection(screen: ScreenDirection): GroundDirection {
