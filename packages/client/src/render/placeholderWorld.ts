@@ -1,4 +1,4 @@
-import { WORLD_DATA } from '@fantasy/shared';
+import { TEST_MAP, WORLD_DATA } from '@fantasy/shared';
 import {
   AmbientLight,
   BoxGeometry,
@@ -7,10 +7,7 @@ import {
   Group,
   Mesh,
   MeshLambertMaterial,
-  PlaneGeometry,
 } from 'three';
-
-const GROUND_SIZE_METRES = 40;
 
 const CHARACTER_HEIGHT_METRES = 1.8;
 
@@ -21,31 +18,22 @@ const CHARACTER_HEIGHT_METRES = 1.8;
 const WALL_HEIGHT_METRES = 2.5;
 
 /**
- * Throwaway scenery: the flat plate and a one-metre ruler to judge scale by.
- * Nothing here moves, so the simulation does not know it exists. The real tile
- * grid is Etap 1.
+ * A ruler laid over the tile map, one line per metre and so one line per tile.
+ *
+ * Kept as a debug aid rather than scenery: it is the only way to see at a
+ * glance whether a tile sits inside its square or half a metre off it.
  */
-export function createPlaceholderGround(): Group {
-  const ground = new Group();
-  ground.add(createGround());
-  ground.add(createGrid());
-  return ground;
-}
+export function createTileGrid(): GridHelper {
+  const size = Math.max(TEST_MAP.width, TEST_MAP.depth);
+  const grid = new GridHelper(size, size, 0x6b7368, 0x4a5148);
 
-function createGround(): Mesh {
-  const ground = new Mesh(
-    new PlaneGeometry(GROUND_SIZE_METRES, GROUND_SIZE_METRES),
-    new MeshLambertMaterial({ color: 0x3a4038 }),
+  // GridHelper centres itself on the origin; the map need not be centred there.
+  grid.position.set(
+    TEST_MAP.originX + TEST_MAP.width / 2,
+    // Lifted clear of the floor so the two surfaces do not fight for the same pixels.
+    0.01,
+    TEST_MAP.originZ + TEST_MAP.depth / 2,
   );
-  // PlaneGeometry is born standing upright; lay it down onto the XZ plane.
-  ground.rotation.x = -Math.PI / 2;
-  return ground;
-}
-
-function createGrid(): GridHelper {
-  const grid = new GridHelper(GROUND_SIZE_METRES, GROUND_SIZE_METRES, 0x6b7368, 0x4a5148);
-  // Lift it clear of the ground so the two surfaces do not fight for the same pixels.
-  grid.position.y = 0.01;
   return grid;
 }
 

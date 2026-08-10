@@ -6,10 +6,11 @@ import { listenForMovementIntent, type MovementRequest } from './input/movementI
 import { createIsometricView } from './render/isometricCamera';
 import {
   createCharacterStandIn,
-  createPlaceholderGround,
   createTemporaryLighting,
+  createTileGrid,
   createWalls,
 } from './render/placeholderWorld';
+import { createTileFloors } from './render/tileFloors';
 import { createPositionInterpolator } from './render/positionInterpolator';
 import { connectToSimulation } from './sim/simConnection';
 import { createTuningPanel } from './tuning/tuningPanel';
@@ -38,7 +39,8 @@ const character = createCharacterStandIn();
 
 const scene = new Scene();
 scene.background = new Color(0x1b1f1d);
-scene.add(createPlaceholderGround());
+scene.add(createTileFloors());
+scene.add(createTileGrid());
 scene.add(createWalls());
 scene.add(character);
 scene.add(createTemporaryLighting());
