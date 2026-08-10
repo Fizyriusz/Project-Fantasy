@@ -3,15 +3,20 @@ import { WORLD_DATA } from '@fantasy/shared';
 import {
   DEFAULT_FOLLOW_HALF_LIFE_MS,
   DEFAULT_ROTATION_DURATION_MS,
-  DEFAULT_VIEW_HEIGHT_METRES,
+  DEFAULT_ZOOM_MAX_METRES,
+  DEFAULT_ZOOM_MIN_METRES,
+  DEFAULT_ZOOM_RESTING_METRES,
 } from '../render/isometricCamera';
 
 export interface TuningValues {
   walkSpeedMetresPerSecond: number;
+  sprintSpeedMetresPerSecond: number;
   accelerationMetresPerSecondSquared: number;
   decelerationMetresPerSecondSquared: number;
   playerRadiusMetres: number;
-  cameraViewHeightMetres: number;
+  cameraZoomMinMetres: number;
+  cameraZoomMaxMetres: number;
+  cameraZoomRestingMetres: number;
   cameraFollowHalfLifeMs: number;
   cameraRotationDurationMs: number;
   interpolation: boolean;
@@ -34,10 +39,13 @@ export interface SliderDefinition {
  */
 export const DEFAULT_TUNING: TuningValues = {
   walkSpeedMetresPerSecond: WORLD_DATA.player.walkSpeedMetresPerSecond,
+  sprintSpeedMetresPerSecond: WORLD_DATA.player.sprintSpeedMetresPerSecond,
   accelerationMetresPerSecondSquared: WORLD_DATA.player.accelerationMetresPerSecondSquared,
   decelerationMetresPerSecondSquared: WORLD_DATA.player.decelerationMetresPerSecondSquared,
   playerRadiusMetres: WORLD_DATA.player.radiusMetres,
-  cameraViewHeightMetres: DEFAULT_VIEW_HEIGHT_METRES,
+  cameraZoomMinMetres: DEFAULT_ZOOM_MIN_METRES,
+  cameraZoomMaxMetres: DEFAULT_ZOOM_MAX_METRES,
+  cameraZoomRestingMetres: DEFAULT_ZOOM_RESTING_METRES,
   cameraFollowHalfLifeMs: DEFAULT_FOLLOW_HALF_LIFE_MS,
   cameraRotationDurationMs: DEFAULT_ROTATION_DURATION_MS,
   interpolation: true,
@@ -50,6 +58,14 @@ export const SLIDERS: readonly SliderDefinition[] = [
     unit: 'm/s',
     min: 1,
     max: 8,
+    step: 0.1,
+  },
+  {
+    key: 'sprintSpeedMetresPerSecond',
+    label: 'Prędkość sprintu (Shift)',
+    unit: 'm/s',
+    min: 1,
+    max: 12,
     step: 0.1,
   },
   {
@@ -69,9 +85,25 @@ export const SLIDERS: readonly SliderDefinition[] = [
     step: 1,
   },
   {
-    key: 'cameraViewHeightMetres',
-    label: 'Przybliżenie kamery',
-    unit: 'm w pionie',
+    key: 'cameraZoomMinMetres',
+    label: 'Przybliżenie — najbliżej',
+    unit: 'm',
+    min: 12,
+    max: 48,
+    step: 1,
+  },
+  {
+    key: 'cameraZoomMaxMetres',
+    label: 'Przybliżenie — najdalej',
+    unit: 'm',
+    min: 12,
+    max: 48,
+    step: 1,
+  },
+  {
+    key: 'cameraZoomRestingMetres',
+    label: 'Przybliżenie — po resecie',
+    unit: 'm',
     min: 12,
     max: 48,
     step: 1,

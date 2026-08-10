@@ -14,6 +14,14 @@ const KEY_DIRECTIONS: ReadonlyMap<string, ScreenDirection> = new Map([
   ['KeyD', { forward: 0, right: 1 }],
 ]);
 
+const SPRINT_KEYS: ReadonlySet<string> = new Set(['ShiftLeft', 'ShiftRight']);
+
+export interface MovementRequest {
+  readonly direction: ScreenDirection;
+  /** Held, not toggled: running is a thing you do, not a mode you are in. */
+  readonly sprinting: boolean;
+}
+
 /**
  * Reports which way the player is asking to walk, and only when that changes.
  *
@@ -21,35 +29,40 @@ const KEY_DIRECTIONS: ReadonlyMap<string, ScreenDirection> = new Map([
  * it is told something else, so pressing a key is a single message rather than
  * a stream of them.
  */
-export function listenForMovementIntent(onChange: (direction: ScreenDirection) => void): void {
+export function listenForMovementIntent(onChange: (request: MovementRequest) => void): void {
   const heldKeys = new Set<string>();
   let lastForward = 0;
   let lastRight = 0;
+  let lastSprinting = false;
 
   function publishIfChanged(): void {
     let forward = 0;
     let right = 0;
+    let sprinting = false;
 
     for (const code of heldKeys) {
       const direction = KEY_DIRECTIONS.get(code);
       if (direction !== undefined) {
         forward += direction.forward;
         right += direction.right;
+      } else if (SPRINT_KEYS.has(code)) {
+        sprinting = true;
       }
     }
 
-    if (forward === lastForward && right === lastRight) {
+    if (forward === lastForward && right === lastRight && sprinting === lastSprinting) {
       return;
     }
 
     lastForward = forward;
     lastRight = right;
-    onChange({ forward, right });
+    lastSprinting = sprinting;
+    onChange({ direction: { forward, right }, sprinting });
   }
 
   window.addEventListener('keydown', (event) => {
     // Auto-repeat fires while a key is simply held down and would say nothing new.
-    if (event.repeat || !KEY_DIRECTIONS.has(event.code)) {
+    if (event.repeat || !(KEY_DIRECTIONS.has(event.code) || SPRINT_KEYS.has(event.code))) {
       return;
     }
     heldKeys.add(event.code);

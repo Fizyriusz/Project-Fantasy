@@ -19,6 +19,12 @@ export interface PlayerData {
   readonly walkSpeedMetresPerSecond: number;
 
   /**
+   * Costs nothing yet. Stamina arrives in Etap 3 (docs/06-roadmapa.md) and is
+   * what will turn running into a decision rather than a free upgrade.
+   */
+  readonly sprintSpeedMetresPerSecond: number;
+
+  /**
    * How fast the character reaches walking pace, and how fast it gives it up.
    * Separate values because starting and stopping do not have to feel alike —
    * eager to move and slow to halt reads very differently from the reverse.
@@ -57,9 +63,10 @@ export const WORLD_DATA: WorldData = {
     startX: 0,
     startZ: 0,
     walkSpeedMetresPerSecond: 3.5,
+    sprintSpeedMetresPerSecond: 5.2,
     accelerationMetresPerSecondSquared: 25,
     decelerationMetresPerSecondSquared: 30,
-    radiusMetres: 0.3,
+    radiusMetres: 0.35,
   },
 
   // Every shape here answers one question about how walking feels. Kept inside

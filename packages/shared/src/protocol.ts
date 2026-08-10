@@ -38,6 +38,7 @@ export interface GroundDirection {
  */
 export interface PlayerTuning {
   readonly walkSpeedMetresPerSecond: number;
+  readonly sprintSpeedMetresPerSecond: number;
   readonly accelerationMetresPerSecondSquared: number;
   readonly decelerationMetresPerSecondSquared: number;
   readonly radiusMetres: number;
@@ -46,7 +47,16 @@ export interface PlayerTuning {
 /** Client speaks first and only ever states intent, never state. */
 export type ClientToSimMessage =
   | { readonly type: 'hello' }
-  | { readonly type: 'moveIntent'; readonly direction: GroundDirection }
+  | {
+      readonly type: 'moveIntent';
+      readonly direction: GroundDirection;
+      /**
+       * A request to run, not a speed. What running is worth is the
+       * simulation's business, which is what keeps a modified client from
+       * inventing its own.
+       */
+      readonly sprinting: boolean;
+    }
   | { readonly type: 'tune'; readonly player: PlayerTuning };
 
 /** Simulation answers with snapshots and events. */

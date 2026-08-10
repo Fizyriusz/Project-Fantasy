@@ -1,8 +1,9 @@
 import { Color, Scene, WebGLRenderer } from 'three';
 
 import { listenForCameraRotation } from './input/cameraRotation';
-import { listenForMovementIntent } from './input/movementIntent';
-import { createIsometricView, type ScreenDirection } from './render/isometricCamera';
+import { listenForCameraZoom, listenForCameraZoomReset } from './input/cameraZoom';
+import { listenForMovementIntent, type MovementRequest } from './input/movementIntent';
+import { createIsometricView } from './render/isometricCamera';
 import {
   createCharacterStandIn,
   createPlaceholderGround,
@@ -62,7 +63,11 @@ let latestTick = 0;
 
 function showConnectionStatus(): void {
   // Stays on the failure text unless the simulation answers, so silence is visible.
-  status.textContent = connected ? `sim: połączony · tick ${latestTick}` : 'sim: brak połączenia';
+  // The zoom rides along because it is the one tuned value the panel cannot
+  // show — the wheel owns it, not a slider.
+  status.textContent = connected
+    ? `sim: połączony · tick ${latestTick} · zoom ${Math.round(view.viewHeightMetres)} m`
+    : 'sim: brak połączenia';
 }
 
 showConnectionStatus();
@@ -84,14 +89,18 @@ const simulation = connectToSimulation((message) => {
 
 simulation.send({ type: 'hello' });
 
-let screenIntent: ScreenDirection = { forward: 0, right: 0 };
+let movementRequest: MovementRequest = { direction: { forward: 0, right: 0 }, sprinting: false };
 
 function sendMoveIntent(): void {
-  simulation.send({ type: 'moveIntent', direction: view.toWorldDirection(screenIntent) });
+  simulation.send({
+    type: 'moveIntent',
+    direction: view.toWorldDirection(movementRequest.direction),
+    sprinting: movementRequest.sprinting,
+  });
 }
 
-listenForMovementIntent((direction) => {
-  screenIntent = direction;
+listenForMovementIntent((request) => {
+  movementRequest = request;
   sendMoveIntent();
 });
 
@@ -102,6 +111,16 @@ listenForCameraRotation((quarterTurns) => {
   sendMoveIntent();
 });
 
+listenForCameraZoom((notches) => {
+  view.zoomBy(notches);
+  showConnectionStatus();
+});
+
+listenForCameraZoomReset(() => {
+  view.resetZoom();
+  showConnectionStatus();
+});
+
 const saveTuning = createTuningSaver();
 
 function applyTuning(values: TuningValues): void {
@@ -109,15 +128,21 @@ function applyTuning(values: TuningValues): void {
     type: 'tune',
     player: {
       walkSpeedMetresPerSecond: values.walkSpeedMetresPerSecond,
+      sprintSpeedMetresPerSecond: values.sprintSpeedMetresPerSecond,
       accelerationMetresPerSecondSquared: values.accelerationMetresPerSecondSquared,
       decelerationMetresPerSecondSquared: values.decelerationMetresPerSecondSquared,
       radiusMetres: values.playerRadiusMetres,
     },
   });
 
-  view.setViewHeight(values.cameraViewHeightMetres);
+  view.setZoomRange(
+    values.cameraZoomMinMetres,
+    values.cameraZoomMaxMetres,
+    values.cameraZoomRestingMetres,
+  );
   view.setRotationDuration(values.cameraRotationDurationMs);
   view.setFollowHalfLife(values.cameraFollowHalfLifeMs);
+  showConnectionStatus();
   playerPosition.setEnabled(values.interpolation);
 
   // The stand-in was built at the default footprint, so scaling keeps what you

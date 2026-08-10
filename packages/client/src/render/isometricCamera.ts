@@ -5,8 +5,23 @@ import type { GroundDirection } from '@fantasy/shared';
 // Scale convention for the whole project: 1 world unit = 1 metre.
 // docs/02-architektura.md asks for one scale fixed from the start.
 
-/** Metres that fit vertically in the viewport. Lower value = closer camera. */
-export const DEFAULT_VIEW_HEIGHT_METRES = 24;
+/**
+ * Metres that fit vertically in the viewport, closest and furthest. The wheel
+ * moves between them and cannot leave: an isometric game reads badly zoomed
+ * right in, and stops being about your surroundings zoomed right out.
+ */
+export const DEFAULT_ZOOM_MIN_METRES = 16;
+export const DEFAULT_ZOOM_MAX_METRES = 28;
+
+/**
+ * Where the view sits when nothing has asked otherwise, and where the middle
+ * mouse button puts it back. Separate from the bounds because the distance the
+ * game is played at is not the same question as how far it may be pushed.
+ */
+export const DEFAULT_ZOOM_RESTING_METRES = 22;
+
+/** Metres of view height per wheel notch. */
+const ZOOM_STEP_METRES = 1.5;
 
 /** Angle above the horizon. docs/01-wizja.md asks for roughly 45 degrees. */
 const ELEVATION_RADIANS = Math.PI / 4;
@@ -27,7 +42,7 @@ const QUARTER_TURN_RADIANS = Math.PI / 2;
 const DISTANCE_METRES = 60;
 
 /** Long enough to follow the turn with your eyes, short enough not to wait. */
-export const DEFAULT_ROTATION_DURATION_MS = 220;
+export const DEFAULT_ROTATION_DURATION_MS = 350;
 
 /**
  * Time for the camera to cover half the distance to the character. Zero nails
@@ -62,8 +77,20 @@ export interface IsometricView {
 
   fitToViewport(aspectRatio: number): void;
 
-  /** How many metres fit vertically. Lower is closer. */
-  setViewHeight(metres: number): void;
+  /** Metres of view height currently in force, for anything that displays it. */
+  readonly viewHeightMetres: number;
+
+  /**
+   * Bounds the wheel may move between, and the value to come back to. The
+   * current zoom and the resting one are both pulled inside the bounds.
+   */
+  setZoomRange(minMetres: number, maxMetres: number, restingMetres: number): void;
+
+  /** Positive notches pull away from the world. Clamped to the range. */
+  zoomBy(notches: number): void;
+
+  /** Back to the resting distance, in one step. */
+  resetZoom(): void;
 
   /** Zero turns the quarter turn into an instant jump. */
   setRotationDuration(milliseconds: number): void;
@@ -92,7 +119,10 @@ export function createIsometricView(aspectRatio: number): IsometricView {
   let currentAzimuth = BASE_AZIMUTH_RADIANS;
   let rotationStartedAtMs = 0;
 
-  let viewHeightMetres = DEFAULT_VIEW_HEIGHT_METRES;
+  let zoomMinMetres = DEFAULT_ZOOM_MIN_METRES;
+  let zoomMaxMetres = DEFAULT_ZOOM_MAX_METRES;
+  let zoomRestingMetres = DEFAULT_ZOOM_RESTING_METRES;
+  let viewHeightMetres = DEFAULT_ZOOM_RESTING_METRES;
   let rotationDurationMs = DEFAULT_ROTATION_DURATION_MS;
   let followHalfLifeMs = DEFAULT_FOLLOW_HALF_LIFE_MS;
   let lastAspectRatio = aspectRatio;
@@ -119,6 +149,10 @@ export function createIsometricView(aspectRatio: number): IsometricView {
     // inverse stays one step behind until something renders. Settle it here, or
     // anything projecting coordinates before the first frame reads stale values.
     camera.updateMatrixWorld(true);
+  }
+
+  function clampZoom(metres: number): number {
+    return Math.min(Math.max(metres, zoomMinMetres), zoomMaxMetres);
   }
 
   function fitToViewport(aspectRatio: number): void {
@@ -187,8 +221,25 @@ export function createIsometricView(aspectRatio: number): IsometricView {
 
     fitToViewport,
 
-    setViewHeight(metres: number): void {
-      viewHeightMetres = metres;
+    get viewHeightMetres(): number {
+      return viewHeightMetres;
+    },
+
+    setZoomRange(minMetres: number, maxMetres: number, restingMetres: number): void {
+      zoomMinMetres = Math.min(minMetres, maxMetres);
+      zoomMaxMetres = Math.max(minMetres, maxMetres);
+      zoomRestingMetres = clampZoom(restingMetres);
+      viewHeightMetres = clampZoom(viewHeightMetres);
+      fitToViewport(lastAspectRatio);
+    },
+
+    zoomBy(notches: number): void {
+      viewHeightMetres = clampZoom(viewHeightMetres + notches * ZOOM_STEP_METRES);
+      fitToViewport(lastAspectRatio);
+    },
+
+    resetZoom(): void {
+      viewHeightMetres = zoomRestingMetres;
       fitToViewport(lastAspectRatio);
     },
 

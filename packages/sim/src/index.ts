@@ -32,6 +32,7 @@ export function createSimulation(): Simulation {
   // Mutable because the tuning panel adjusts them while the world runs. The
   // data file remains the only source of the starting values.
   let walkSpeedMetresPerSecond = WORLD_DATA.player.walkSpeedMetresPerSecond;
+  let sprintSpeedMetresPerSecond = WORLD_DATA.player.sprintSpeedMetresPerSecond;
   let accelerationMetresPerSecondSquared = WORLD_DATA.player.accelerationMetresPerSecondSquared;
   let decelerationMetresPerSecondSquared = WORLD_DATA.player.decelerationMetresPerSecondSquared;
   let playerRadiusMetres = WORLD_DATA.player.radiusMetres;
@@ -49,6 +50,7 @@ export function createSimulation(): Simulation {
   // can ever alias something that arrived from outside.
   let intentX = 0;
   let intentZ = 0;
+  let intentSprinting = false;
 
   // Metres per second. The character carries momentum now, so letting go of a
   // key is a request to stop rather than a stop.
@@ -61,10 +63,12 @@ export function createSimulation(): Simulation {
       return;
     }
 
+    const targetSpeed = intentSprinting ? sprintSpeedMetresPerSecond : walkSpeedMetresPerSecond;
+
     // Dividing by the length is what makes diagonal walking the same speed as
     // straight walking, whatever the client happened to send.
-    const desiredX = length === 0 ? 0 : (intentX / length) * walkSpeedMetresPerSecond;
-    const desiredZ = length === 0 ? 0 : (intentZ / length) * walkSpeedMetresPerSecond;
+    const desiredX = length === 0 ? 0 : (intentX / length) * targetSpeed;
+    const desiredZ = length === 0 ? 0 : (intentZ / length) * targetSpeed;
 
     // Starting and turning share the acceleration; only letting go decelerates.
     const rate =
@@ -103,9 +107,11 @@ export function createSimulation(): Simulation {
         case 'moveIntent':
           intentX = message.direction.x;
           intentZ = message.direction.z;
+          intentSprinting = message.sprinting;
           return [];
         case 'tune':
           walkSpeedMetresPerSecond = message.player.walkSpeedMetresPerSecond;
+          sprintSpeedMetresPerSecond = message.player.sprintSpeedMetresPerSecond;
           accelerationMetresPerSecondSquared =
             message.player.accelerationMetresPerSecondSquared;
           decelerationMetresPerSecondSquared =
