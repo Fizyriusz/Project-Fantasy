@@ -1,12 +1,19 @@
-import type { WallData } from '@fantasy/shared';
+import { EDGE_TYPES, edgeExtent, type EdgeSide, type TileMap } from '@fantasy/shared';
 
 export interface MovingPoint {
   x: number;
   z: number;
 }
 
+interface Obstacle {
+  readonly minX: number;
+  readonly maxX: number;
+  readonly minZ: number;
+  readonly maxZ: number;
+}
+
 /**
- * How many times to sweep the whole wall list. Pushing clear of one wall can
+ * How many times to sweep the obstacle list. Pushing clear of one wall can
  * bury the circle in the next one, which is exactly what an inside corner
  * does, so a single sweep is not enough. Axis-aligned walls settle in two;
  * the third is slack.
@@ -20,8 +27,12 @@ function clamp(value: number, low: number, high: number): number {
 /**
  * Pushes a circle out of the walls it overlaps, in place.
  *
+ * Only the walls within a tile or two are ever considered. That is the whole
+ * reason the world is a grid: a map of any size costs the same as this one,
+ * because reaching the walls near a point takes no searching.
+ *
  * Deliberately resolves after the move rather than sweeping along it. At a
- * walking pace of under 0.2 m per tick against walls 0.4 m thick there is
+ * walking pace of under 0.3 m per tick against walls a hand thick there is
  * nothing to tunnel through, and this stays simple enough to reason about.
  * A projectile or a vehicle would need the sweep.
  *
@@ -32,23 +43,74 @@ function clamp(value: number, low: number, high: number): number {
 export function resolveWallCollisions(
   position: MovingPoint,
   radius: number,
-  walls: readonly WallData[],
+  map: TileMap,
 ): void {
+  const obstacles = collectNearbyObstacles(position, radius, map);
+
   for (let pass = 0; pass < RESOLUTION_PASSES; pass += 1) {
-    for (const wall of walls) {
-      pushOutOfWall(position, radius, wall);
+    for (const obstacle of obstacles) {
+      pushOut(position, radius, obstacle);
     }
   }
 }
 
-function pushOutOfWall(position: MovingPoint, radius: number, wall: WallData): void {
-  const minX = wall.centerX - wall.width / 2;
-  const maxX = wall.centerX + wall.width / 2;
-  const minZ = wall.centerZ - wall.depth / 2;
-  const maxZ = wall.centerZ + wall.depth / 2;
+function collectNearbyObstacles(
+  position: MovingPoint,
+  radius: number,
+  map: TileMap,
+): Obstacle[] {
+  // One tile beyond the circle, because a boundary is owned by the tile on its
+  // far side and would otherwise be missed at the last moment.
+  const reach = radius + 1;
+  const obstacles: Obstacle[] = [];
 
-  const nearestX = clamp(position.x, minX, maxX);
-  const nearestZ = clamp(position.z, minZ, maxZ);
+  for (let tileZ = Math.floor(position.z - reach); tileZ <= Math.floor(position.z + reach); tileZ += 1) {
+    for (let tileX = Math.floor(position.x - reach); tileX <= Math.floor(position.x + reach); tileX += 1) {
+      addObstacle(obstacles, map, tileX, tileZ, 'west');
+      addObstacle(obstacles, map, tileX, tileZ, 'north');
+    }
+  }
+
+  return obstacles;
+}
+
+function addObstacle(
+  obstacles: Obstacle[],
+  map: TileMap,
+  tileX: number,
+  tileZ: number,
+  side: EdgeSide,
+): void {
+  const edge = map.edgeAt(tileX, tileZ, side);
+  if (edge === null || !EDGE_TYPES[edge].blocksMovement) {
+    return;
+  }
+
+  const half = EDGE_TYPES[edge].thicknessMetres / 2;
+  // Reaches into the corner exactly as far as the drawn wall does, so what
+  // looks solid is what stops you.
+  const { startExtension, endExtension } = edgeExtent(map, tileX, tileZ, side);
+
+  if (side === 'west') {
+    obstacles.push({
+      minX: tileX - half,
+      maxX: tileX + half,
+      minZ: tileZ - startExtension,
+      maxZ: tileZ + 1 + endExtension,
+    });
+  } else {
+    obstacles.push({
+      minX: tileX - startExtension,
+      maxX: tileX + 1 + endExtension,
+      minZ: tileZ - half,
+      maxZ: tileZ + half,
+    });
+  }
+}
+
+function pushOut(position: MovingPoint, radius: number, obstacle: Obstacle): void {
+  const nearestX = clamp(position.x, obstacle.minX, obstacle.maxX);
+  const nearestZ = clamp(position.z, obstacle.minZ, obstacle.maxZ);
 
   const offsetX = position.x - nearestX;
   const offsetZ = position.z - nearestZ;
@@ -69,21 +131,21 @@ function pushOutOfWall(position: MovingPoint, radius: number, wall: WallData): v
 
   // Centre is inside the box, so there is no direction to push away from.
   // Leave through whichever face is closest. Only reachable if something put
-  // the circle there — a moved wall, a loaded save — but silently staying
-  // stuck inside a wall would be worse than picking a side.
-  const throughMinX = position.x - minX;
-  const throughMaxX = maxX - position.x;
-  const throughMinZ = position.z - minZ;
-  const throughMaxZ = maxZ - position.z;
+  // the circle there — a wall built underfoot, a loaded save — but silently
+  // staying stuck inside a wall would be worse than picking a side.
+  const throughMinX = position.x - obstacle.minX;
+  const throughMaxX = obstacle.maxX - position.x;
+  const throughMinZ = position.z - obstacle.minZ;
+  const throughMaxZ = obstacle.maxZ - position.z;
   const shortest = Math.min(throughMinX, throughMaxX, throughMinZ, throughMaxZ);
 
   if (shortest === throughMinX) {
-    position.x = minX - radius;
+    position.x = obstacle.minX - radius;
   } else if (shortest === throughMaxX) {
-    position.x = maxX + radius;
+    position.x = obstacle.maxX + radius;
   } else if (shortest === throughMinZ) {
-    position.z = minZ - radius;
+    position.z = obstacle.minZ - radius;
   } else {
-    position.z = maxZ + radius;
+    position.z = obstacle.maxZ + radius;
   }
 }

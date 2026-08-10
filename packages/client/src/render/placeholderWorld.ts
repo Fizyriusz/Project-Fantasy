@@ -12,12 +12,6 @@ import {
 const CHARACTER_HEIGHT_METRES = 1.8;
 
 /**
- * Purely a drawing choice. The simulation collides in two dimensions and has
- * no idea walls have a height at all.
- */
-const WALL_HEIGHT_METRES = 2.5;
-
-/**
  * A ruler laid over the tile map, one line per metre and so one line per tile.
  *
  * Kept as a debug aid rather than scenery: it is the only way to see at a
@@ -35,26 +29,6 @@ export function createTileGrid(): GridHelper {
     TEST_MAP.originZ + TEST_MAP.depth / 2,
   );
   return grid;
-}
-
-/**
- * Draws the same wall list the simulation collides against, so what you see
- * blocking you is exactly what blocked you.
- */
-export function createWalls(): Group {
-  const walls = new Group();
-  const material = new MeshLambertMaterial({ color: 0x6a6258 });
-
-  for (const wall of WORLD_DATA.walls) {
-    const mesh = new Mesh(
-      new BoxGeometry(wall.width, WALL_HEIGHT_METRES, wall.depth),
-      material,
-    );
-    mesh.position.set(wall.centerX, WALL_HEIGHT_METRES / 2, wall.centerZ);
-    walls.add(mesh);
-  }
-
-  return walls;
 }
 
 /**

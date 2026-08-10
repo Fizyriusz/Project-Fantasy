@@ -1,4 +1,5 @@
 import {
+  TEST_MAP,
   TICK_RATE_HZ,
   WORLD_DATA,
   type ClientToSimMessage,
@@ -90,7 +91,7 @@ export function createSimulation(): Simulation {
     player.x += velocityX / TICK_RATE_HZ;
     player.z += velocityZ / TICK_RATE_HZ;
 
-    resolveWallCollisions(player, playerRadiusMetres, WORLD_DATA.walls);
+    resolveWallCollisions(player, playerRadiusMetres, TEST_MAP);
   }
 
   function snapshotPlayer(): GroundPosition {

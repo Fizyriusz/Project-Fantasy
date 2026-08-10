@@ -1,3 +1,4 @@
+import { EDGE_TYPES, isEdgeId, type EdgeId } from '../data/edgeTypes';
 import { isFloorId, type FloorId } from '../data/floorTypes';
 
 /**
@@ -5,14 +6,22 @@ import { isFloorId, type FloorId } from '../data/floorTypes';
  * grid of tiles with floors as discrete whole levels, and 1 tile = 1 metre
  * keeps it on the same scale as everything else.
  *
- * Walls do not live here. They sit on the boundaries *between* tiles, which is
- * krok 2 — see the note on edges there. A tile is always the floor you stand
- * on, never the wall you bump into.
+ * A tile is always the floor you stand on, never the wall you bump into.
  */
 export interface Tile {
   /** Null is a hole: nothing to draw and, later, nothing to stand on. */
   readonly floor: FloorId | null;
 }
+
+/**
+ * Walls stand on the boundaries between tiles, not on the tiles themselves.
+ * Each boundary belongs to exactly one tile — the one to its east or south —
+ * so a wall between two rooms is stored once and cannot disagree with itself.
+ *
+ * The east edge of a tile is the west edge of its neighbour. There is no
+ * separate name for it, and that is the point.
+ */
+export type EdgeSide = 'west' | 'north';
 
 export interface TileMap {
   /** Tile coordinates of the north-west corner. Negative values are normal. */
@@ -24,8 +33,28 @@ export interface TileMap {
   /** Null outside the map, which is not the same as a hole inside it. */
   tileAt(tileX: number, tileZ: number): Tile | null;
 
+  /** Null when the boundary is open. Works past the map's border too. */
+  edgeAt(tileX: number, tileZ: number, side: EdgeSide): EdgeId | null;
+
   /** Visits every tile that has a floor, in reading order. */
   forEachFloor(visit: (tileX: number, tileZ: number, floor: FloorId) => void): void;
+
+  /** Visits every boundary that has something on it. */
+  forEachEdge(visit: (tileX: number, tileZ: number, side: EdgeSide, edge: EdgeId) => void): void;
+}
+
+/**
+ * A straight run of identical boundaries, written as its two ends.
+ *
+ * A stopgap for krok 2: a wall is a handful of these instead of forty separate
+ * entries. Rooms that carry their own walls arrive in krok 3 and this goes
+ * away with them.
+ */
+export interface EdgeRun {
+  readonly from: readonly [number, number];
+  readonly to: readonly [number, number];
+  readonly side: EdgeSide;
+  readonly type: EdgeId;
 }
 
 export interface TileMapSource {
@@ -35,15 +64,20 @@ export interface TileMapSource {
   readonly rows: readonly string[];
   /** Which floor each character means. A character absent from here is a hole. */
   readonly legend: Readonly<Record<string, FloorId>>;
+  readonly edges?: readonly EdgeRun[];
+}
+
+function edgeKey(tileX: number, tileZ: number, side: EdgeSide): string {
+  return `${tileX},${tileZ},${side}`;
 }
 
 /**
- * Turns rows of characters into a grid.
+ * Turns rows of characters and a list of wall runs into a grid.
  *
- * Characters rather than a list of tiles because a map is read far more often
- * than it is written, and a picture of the ground is easier to check than
- * sixteen hundred entries. Rooms and walls get a different form in krok 3 —
- * edges cannot be drawn on a grid that has one cell per tile.
+ * Characters for floors because a map is read far more often than it is
+ * written, and a picture of the ground is easier to check than sixteen hundred
+ * entries. Walls cannot join that picture: one cell per tile has nowhere to
+ * put a thing that stands between two of them.
  */
 export function createTileMap(source: TileMapSource): TileMap {
   const depth = source.rows.length;
@@ -76,6 +110,32 @@ export function createTileMap(source: TileMapSource): TileMap {
     }
   }
 
+  // Kept apart from the tile array rather than as two more fields on a tile:
+  // a wall can stand on the map's outer border, where there is no tile to own it.
+  const edges = new Map<string, EdgeId>();
+
+  for (const [runIndex, run] of (source.edges ?? []).entries()) {
+    if (!isEdgeId(run.type)) {
+      throw new Error(`Edge run ${runIndex} uses unknown type '${run.type}'`);
+    }
+
+    const [fromX, fromZ] = run.from;
+    const [toX, toZ] = run.to;
+    if (fromX !== toX && fromZ !== toZ) {
+      throw new Error(
+        `Edge run ${runIndex} is diagonal: ${run.from.join(',')} to ${run.to.join(',')}`,
+      );
+    }
+
+    const stepX = Math.sign(toX - fromX);
+    const stepZ = Math.sign(toZ - fromZ);
+    const length = Math.max(Math.abs(toX - fromX), Math.abs(toZ - fromZ));
+
+    for (let step = 0; step <= length; step += 1) {
+      edges.set(edgeKey(fromX + stepX * step, fromZ + stepZ * step, run.side), run.type);
+    }
+  }
+
   function indexOf(tileX: number, tileZ: number): number | null {
     const column = tileX - source.originX;
     const row = tileZ - source.originZ;
@@ -96,6 +156,10 @@ export function createTileMap(source: TileMapSource): TileMap {
       return index === null ? null : tiles[index];
     },
 
+    edgeAt(tileX: number, tileZ: number, side: EdgeSide): EdgeId | null {
+      return edges.get(edgeKey(tileX, tileZ, side)) ?? null;
+    },
+
     forEachFloor(visit): void {
       for (let row = 0; row < depth; row += 1) {
         for (let column = 0; column < width; column += 1) {
@@ -106,7 +170,84 @@ export function createTileMap(source: TileMapSource): TileMap {
         }
       }
     },
+
+    forEachEdge(visit): void {
+      for (const [key, edge] of edges) {
+        const [x, z, side] = key.split(',');
+        visit(Number(x), Number(z), side as EdgeSide, edge);
+      }
+    },
   };
+}
+
+/**
+ * How far a wall segment reaches past each of its two ends, in metres.
+ *
+ * A segment is one tile long, but it is also thick, so where two walls meet at
+ * a corner the perpendicular one juts out past the end of this one and leaves
+ * an unfilled square of half a thickness on the outside of the corner.
+ * Reaching that far past the end closes it.
+ *
+ * Only where a perpendicular wall actually stands. Reaching past every end
+ * unconditionally would push the walls beside a doorway into the doorway, and
+ * a one metre opening would quietly become a seventy-five centimetre one.
+ *
+ * Shared between drawing and collision on purpose: a corner that looks solid
+ * and a corner that stops you have to be the same corner.
+ */
+export interface EdgeExtent {
+  readonly startExtension: number;
+  readonly endExtension: number;
+}
+
+export function edgeExtent(
+  map: TileMap,
+  tileX: number,
+  tileZ: number,
+  side: EdgeSide,
+): EdgeExtent {
+  if (side === 'north') {
+    // Runs west to east; its ends are the corners at x and at x + 1.
+    return {
+      startExtension: reachAcross(map, [
+        [tileX, tileZ, 'west'],
+        [tileX, tileZ - 1, 'west'],
+      ]),
+      endExtension: reachAcross(map, [
+        [tileX + 1, tileZ, 'west'],
+        [tileX + 1, tileZ - 1, 'west'],
+      ]),
+    };
+  }
+
+  // Runs north to south; its ends are the corners at z and at z + 1.
+  return {
+    startExtension: reachAcross(map, [
+      [tileX, tileZ, 'north'],
+      [tileX - 1, tileZ, 'north'],
+    ]),
+    endExtension: reachAcross(map, [
+      [tileX, tileZ + 1, 'north'],
+      [tileX - 1, tileZ + 1, 'north'],
+    ]),
+  };
+}
+
+/** The thickest perpendicular wall meeting at a corner decides how far to reach. */
+function reachAcross(
+  map: TileMap,
+  candidates: readonly (readonly [number, number, EdgeSide])[],
+): number {
+  let reach = 0;
+
+  for (const [tileX, tileZ, side] of candidates) {
+    const edge = map.edgeAt(tileX, tileZ, side);
+    if (edge !== null) {
+      reach = Math.max(reach, EDGE_TYPES[edge].thicknessMetres / 2);
+    }
+  }
+
+  return reach;
 }
 
 /** Where a tile sits in the world. Tiles are addressed by their corner, drawn from their centre. */

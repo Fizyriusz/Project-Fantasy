@@ -1,6 +1,7 @@
 export * from './protocol';
 export * from './data/world';
 export * from './data/floorTypes';
+export * from './data/edgeTypes';
 export * from './data/testMap';
 export * from './world/tileMap';
 

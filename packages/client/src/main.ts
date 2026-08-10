@@ -8,9 +8,9 @@ import {
   createCharacterStandIn,
   createTemporaryLighting,
   createTileGrid,
-  createWalls,
 } from './render/placeholderWorld';
 import { createTileFloors } from './render/tileFloors';
+import { createTileWalls } from './render/tileWalls';
 import { createPositionInterpolator } from './render/positionInterpolator';
 import { connectToSimulation } from './sim/simConnection';
 import { createTuningPanel } from './tuning/tuningPanel';
@@ -41,7 +41,7 @@ const scene = new Scene();
 scene.background = new Color(0x1b1f1d);
 scene.add(createTileFloors());
 scene.add(createTileGrid());
-scene.add(createWalls());
+scene.add(createTileWalls());
 scene.add(character);
 scene.add(createTemporaryLighting());
 
