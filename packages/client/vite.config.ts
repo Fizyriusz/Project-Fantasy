@@ -67,5 +67,9 @@ export default defineConfig({
   plugins: [tuningFilePlugin()],
   server: {
     port: 5173,
+    // Fail rather than quietly move to the next free port. Drifting ports
+    // leave a trail of forgotten servers and make "which one am I looking at"
+    // a real question; refusing to start says plainly that one is still up.
+    strictPort: true,
   },
 });
