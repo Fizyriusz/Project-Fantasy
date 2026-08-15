@@ -2,6 +2,7 @@ import { Color, Scene, WebGLRenderer } from 'three';
 
 import { listenForCameraRotation } from './input/cameraRotation';
 import { listenForCameraZoom, listenForCameraZoomReset } from './input/cameraZoom';
+import { listenForInteract } from './input/interact';
 import { listenForMovementIntent, type MovementRequest } from './input/movementIntent';
 import { createIsometricView } from './render/isometricCamera';
 import {
@@ -9,6 +10,7 @@ import {
   createTemporaryLighting,
   createTileGrid,
 } from './render/placeholderWorld';
+import { createDoors } from './render/doors';
 import { createTileFloors } from './render/tileFloors';
 import { createTileWalls } from './render/tileWalls';
 import { createPositionInterpolator } from './render/positionInterpolator';
@@ -39,9 +41,12 @@ const character = createCharacterStandIn();
 
 const scene = new Scene();
 scene.background = new Color(0x1b1f1d);
+const doors = createDoors();
+
 scene.add(createTileFloors());
 scene.add(createTileGrid());
 scene.add(createTileWalls());
+scene.add(doors.group);
 scene.add(character);
 scene.add(createTemporaryLighting());
 
@@ -85,6 +90,9 @@ const simulation = connectToSimulation((message) => {
       // character is. It only chooses how to fill the gaps between snapshots.
       playerPosition.push(message.tick, message.player);
       break;
+    case 'doorChanged':
+      doors.setOpen(message.door.tileX, message.door.tileZ, message.door.side, message.open);
+      break;
   }
   showConnectionStatus();
 });
@@ -121,6 +129,10 @@ listenForCameraZoom((notches) => {
 listenForCameraZoomReset(() => {
   view.resetZoom();
   showConnectionStatus();
+});
+
+listenForInteract(() => {
+  simulation.send({ type: 'interact' });
 });
 
 const saveTuning = createTuningSaver();

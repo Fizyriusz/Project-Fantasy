@@ -7,7 +7,10 @@ import {
   type SimToClientMessage,
 } from '@fantasy/shared';
 
+import { edgeKey } from '@fantasy/shared';
+
 import { resolveWallCollisions } from './collision';
+import { findReachableDoor } from './doors';
 
 /**
  * The whole simulation, reachable only through messages.
@@ -53,6 +56,13 @@ export function createSimulation(): Simulation {
   let intentZ = 0;
   let intentSprinting = false;
 
+  // Which doors stand open. This is state, not map data: the map says a door
+  // is here, the simulation remembers what was done to it
+  // (docs/02-architektura.md, "Zapis stanu").
+  const openDoors = new Set<string>();
+  const isDoorOpen = (tileX: number, tileZ: number, side: 'west' | 'north'): boolean =>
+    openDoors.has(edgeKey(tileX, tileZ, side));
+
   // Metres per second. The character carries momentum now, so letting go of a
   // key is a request to stop rather than a stop.
   let velocityX = 0;
@@ -91,7 +101,7 @@ export function createSimulation(): Simulation {
     player.x += velocityX / TICK_RATE_HZ;
     player.z += velocityZ / TICK_RATE_HZ;
 
-    resolveWallCollisions(player, playerRadiusMetres, TEST_MAP);
+    resolveWallCollisions(player, playerRadiusMetres, TEST_MAP, isDoorOpen);
   }
 
   function snapshotPlayer(): GroundPosition {
@@ -110,6 +120,24 @@ export function createSimulation(): Simulation {
           intentZ = message.direction.z;
           intentSprinting = message.sprinting;
           return [];
+        case 'interact': {
+          const door = findReachableDoor(player.x, player.z, TEST_MAP);
+          if (door === null) {
+            return [];
+          }
+
+          const key = edgeKey(door.tileX, door.tileZ, door.side);
+          const open = !openDoors.has(key);
+          if (open) {
+            openDoors.add(key);
+          } else {
+            openDoors.delete(key);
+            // Closing on top of yourself would leave the character inside the
+            // leaf; the next tick's resolution pushes them clear either way.
+          }
+
+          return [{ type: 'doorChanged', door, open }];
+        }
         case 'tune':
           walkSpeedMetresPerSecond = message.player.walkSpeedMetresPerSecond;
           sprintSpeedMetresPerSecond = message.player.sprintSpeedMetresPerSecond;

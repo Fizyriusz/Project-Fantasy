@@ -71,7 +71,12 @@ export interface TileMapSource {
   readonly buildings?: readonly BuildingPlacement[];
 }
 
-function edgeKey(tileX: number, tileZ: number, side: EdgeSide): string {
+/**
+ * One string naming one boundary. Exported because the simulation, the
+ * renderer and the protocol all have to agree on what "that door" means, and
+ * three private conventions would eventually disagree.
+ */
+export function edgeKey(tileX: number, tileZ: number, side: EdgeSide): string {
   return `${tileX},${tileZ},${side}`;
 }
 

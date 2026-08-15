@@ -44,9 +44,22 @@ export interface PlayerTuning {
   readonly radiusMetres: number;
 }
 
+/** Names one boundary in the world, for talking about a particular door. */
+export interface EdgeRef {
+  readonly tileX: number;
+  readonly tileZ: number;
+  readonly side: 'west' | 'north';
+}
+
 /** Client speaks first and only ever states intent, never state. */
 export type ClientToSimMessage =
   | { readonly type: 'hello' }
+  /**
+   * "Use whatever is within reach." The client does not name the door, or
+   * decide that anything happens — it says what the player asked for and the
+   * simulation works out whether there is anything to do.
+   */
+  | { readonly type: 'interact' }
   | {
       readonly type: 'moveIntent';
       readonly direction: GroundDirection;
@@ -62,6 +75,12 @@ export type ClientToSimMessage =
 /** Simulation answers with snapshots and events. */
 export type SimToClientMessage =
   | { readonly type: 'ready' }
+  /**
+   * An event, not part of the snapshot: a door changes rarely, and repeating
+   * the state of every door twenty times a second to say nothing happened
+   * would be silly. Doors start closed, so silence means closed.
+   */
+  | { readonly type: 'doorChanged'; readonly door: EdgeRef; readonly open: boolean }
   | {
       readonly type: 'snapshot';
       readonly tick: number;

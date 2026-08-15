@@ -12,7 +12,10 @@ export interface EdgeType {
   readonly blocksMovement: boolean;
   /** Unused until walls start hiding things and line of sight exists. */
   readonly blocksSight: boolean;
-  /** Unused until krok 4. Doors are the only thing that will set it. */
+  /**
+   * Can be opened and closed while the game runs. Whether it *is* open is not
+   * written here — that is state, and belongs to the simulation.
+   */
   readonly openable: boolean;
   readonly heightMetres: number;
   /**
@@ -39,6 +42,14 @@ export const EDGE_TYPES = {
     openable: false,
     heightMetres: 2.5,
     thicknessMetres: 0.12,
+  },
+  door: {
+    label: 'drzwi',
+    blocksMovement: true,
+    blocksSight: true,
+    openable: true,
+    heightMetres: 2.1,
+    thicknessMetres: 0.05,
   },
   chainlink: {
     label: 'siatka ogrodzeniowa',

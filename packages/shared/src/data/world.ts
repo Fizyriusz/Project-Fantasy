@@ -45,8 +45,10 @@ export interface WorldData {
 
 export const WORLD_DATA: WorldData = {
   player: {
-    startX: 0,
-    startZ: 0,
+    // On the path a few metres short of the front door. Standing on the
+    // threshold means a closed door starts by shoving you through itself.
+    startX: 0.5,
+    startZ: 3.5,
     walkSpeedMetresPerSecond: 3.5,
     sprintSpeedMetresPerSecond: 5.2,
     accelerationMetresPerSecondSquared: 25,

@@ -34,13 +34,13 @@ export const HOUSE: BuildingTemplate = {
 
   openings: [
     // Front door, in the south wall of the hall.
-    { at: [1, 8], side: 'north' },
-    // Hall to the staircase, and hall to the living room.
+    { at: [1, 8], side: 'north', type: 'door' },
+    // Bathroom, the one room indoors that gets a door of its own.
+    { at: [7, 1], side: 'west', type: 'door' },
+    // The rest are plain openings, the way a hall opens onto a living room.
     { at: [1, 4], side: 'north' },
     { at: [3, 5], side: 'west' },
-    // Kitchen to the living room, to the staircase, and to the bathroom.
     { at: [4, 4], side: 'north' },
     { at: [3, 1], side: 'west' },
-    { at: [7, 1], side: 'west' },
   ],
 };

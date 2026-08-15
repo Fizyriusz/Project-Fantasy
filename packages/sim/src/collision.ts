@@ -40,12 +40,18 @@ function clamp(value: number, low: number, high: number): number {
  * the part of the step running along the wall and loses only the part running
  * into it.
  */
+/** Told which boundaries are standing open, so a door stops blocking when used. */
+export type IsOpen = (tileX: number, tileZ: number, side: EdgeSide) => boolean;
+
+const NOTHING_OPEN: IsOpen = () => false;
+
 export function resolveWallCollisions(
   position: MovingPoint,
   radius: number,
   map: TileMap,
+  isOpen: IsOpen = NOTHING_OPEN,
 ): void {
-  const obstacles = collectNearbyObstacles(position, radius, map);
+  const obstacles = collectNearbyObstacles(position, radius, map, isOpen);
 
   for (let pass = 0; pass < RESOLUTION_PASSES; pass += 1) {
     for (const obstacle of obstacles) {
@@ -58,6 +64,7 @@ function collectNearbyObstacles(
   position: MovingPoint,
   radius: number,
   map: TileMap,
+  isOpen: IsOpen,
 ): Obstacle[] {
   // One tile beyond the circle, because a boundary is owned by the tile on its
   // far side and would otherwise be missed at the last moment.
@@ -66,8 +73,8 @@ function collectNearbyObstacles(
 
   for (let tileZ = Math.floor(position.z - reach); tileZ <= Math.floor(position.z + reach); tileZ += 1) {
     for (let tileX = Math.floor(position.x - reach); tileX <= Math.floor(position.x + reach); tileX += 1) {
-      addObstacle(obstacles, map, tileX, tileZ, 'west');
-      addObstacle(obstacles, map, tileX, tileZ, 'north');
+      addObstacle(obstacles, map, tileX, tileZ, 'west', isOpen);
+      addObstacle(obstacles, map, tileX, tileZ, 'north', isOpen);
     }
   }
 
@@ -80,9 +87,13 @@ function addObstacle(
   tileX: number,
   tileZ: number,
   side: EdgeSide,
+  isOpen: IsOpen,
 ): void {
   const edge = map.edgeAt(tileX, tileZ, side);
   if (edge === null || !EDGE_TYPES[edge].blocksMovement) {
+    return;
+  }
+  if (EDGE_TYPES[edge].openable && isOpen(tileX, tileZ, side)) {
     return;
   }
 

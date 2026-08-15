@@ -9,17 +9,7 @@ import {
   Vector3,
 } from 'three';
 
-interface EdgeAppearance {
-  readonly colour: number;
-  /** Chain link is mostly holes; drawing it solid would be a lie. */
-  readonly opacity: number;
-}
-
-const EDGE_APPEARANCE: Record<EdgeId, EdgeAppearance> = {
-  brick: { colour: 0x6a6258, opacity: 1 },
-  wood: { colour: 0x7d6f5c, opacity: 1 },
-  chainlink: { colour: 0x8c948a, opacity: 0.35 },
-};
+import { EDGE_APPEARANCE } from './edgeAppearance';
 
 interface Placement {
   readonly x: number;
@@ -38,6 +28,12 @@ export function createTileWalls(): Group {
   const byType = new Map<EdgeId, Placement[]>();
 
   TEST_MAP.forEachEdge((tileX, tileZ, side, edge) => {
+    // Anything that opens is drawn separately, because it has to be able to
+    // disappear on its own without rebuilding every wall on the map.
+    if (EDGE_TYPES[edge].openable) {
+      return;
+    }
+
     const placements = byType.get(edge);
     const placement = { x: tileX, z: tileZ, side };
     if (placements === undefined) {
