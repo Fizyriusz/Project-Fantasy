@@ -11,6 +11,8 @@ export interface PlayerData {
   /** Where the character stands when a world starts, in metres. */
   readonly startX: number;
   readonly startZ: number;
+  /** Which floor. Whole numbers only; ground is zero. */
+  readonly startLevel: number;
 
   /**
    * Stated per second because that is how a human reasons about walking pace.
@@ -49,6 +51,7 @@ export const WORLD_DATA: WorldData = {
     // threshold means a closed door starts by shoving you through itself.
     startX: 0.5,
     startZ: 3.5,
+    startLevel: 0,
     walkSpeedMetresPerSecond: 3.5,
     sprintSpeedMetresPerSecond: 5.2,
     accelerationMetresPerSecondSquared: 25,

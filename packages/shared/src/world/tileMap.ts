@@ -1,7 +1,5 @@
 import { EDGE_TYPES, isEdgeId, type EdgeId } from '../data/edgeTypes';
 import { isFloorId, type FloorId } from '../data/floorTypes';
-import { expandBuilding } from './buildingPlacement';
-import type { BuildingPlacement } from './buildingTemplate';
 
 /**
  * One square metre of ground. docs/02-architektura.md fixes the world as a
@@ -67,8 +65,15 @@ export interface TileMapSource {
   /** Which floor each character means. A character absent from here is a hole. */
   readonly legend: Readonly<Record<string, FloorId>>;
   readonly edges?: readonly EdgeRun[];
-  /** Laid over the painted ground: a building brings its own floors and walls. */
-  readonly buildings?: readonly BuildingPlacement[];
+  /** Laid over the painted ground — this is where a building's own floors land. */
+  readonly floorOverrides?: readonly { tileX: number; tileZ: number; floor: FloorId }[];
+  /** Applied after the runs. A null type clears whatever stood there. */
+  readonly edgeOverrides?: readonly {
+    tileX: number;
+    tileZ: number;
+    side: EdgeSide;
+    type: EdgeId | null;
+  }[];
 }
 
 /**
@@ -154,27 +159,19 @@ export function createTileMap(source: TileMapSource): TileMap {
     return row * width + column;
   }
 
-  // Buildings land on top of the painted ground. Their walls go down before
-  // their openings, so a doorway wins over the wall it interrupts.
-  for (const placement of source.buildings ?? []) {
-    const built = expandBuilding(placement);
-
-    for (const { tileX, tileZ, floor } of built.floors) {
-      const index = indexOf(tileX, tileZ);
-      if (index === null) {
-        throw new Error(
-          `Building '${placement.template.name}' reaches tile ${tileX},${tileZ}, which is off the map`,
-        );
-      }
-      tiles[index] = { floor };
+  for (const { tileX, tileZ, floor } of source.floorOverrides ?? []) {
+    const index = indexOf(tileX, tileZ);
+    if (index === null) {
+      throw new Error(`A building reaches tile ${tileX},${tileZ}, which is off the map`);
     }
+    tiles[index] = { floor };
+  }
 
-    for (const { tileX, tileZ, side, type } of [...built.walls, ...built.openings]) {
-      if (type === null) {
-        edges.delete(edgeKey(tileX, tileZ, side));
-      } else {
-        edges.set(edgeKey(tileX, tileZ, side), type);
-      }
+  for (const { tileX, tileZ, side, type } of source.edgeOverrides ?? []) {
+    if (type === null) {
+      edges.delete(edgeKey(tileX, tileZ, side));
+    } else {
+      edges.set(edgeKey(tileX, tileZ, side), type);
     }
   }
 

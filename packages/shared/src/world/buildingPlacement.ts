@@ -4,12 +4,14 @@ import type { BuildingPlacement, BuildingTemplate } from './buildingTemplate';
 import type { EdgeSide } from './tileMap';
 
 export interface PlacedFloor {
+  readonly level: number;
   readonly tileX: number;
   readonly tileZ: number;
   readonly floor: FloorId;
 }
 
 export interface PlacedEdge {
+  readonly level: number;
   readonly tileX: number;
   readonly tileZ: number;
   readonly side: EdgeSide;
@@ -17,11 +19,18 @@ export interface PlacedEdge {
   readonly type: EdgeId | null;
 }
 
+export interface PlacedStairs {
+  readonly tileX: number;
+  readonly tileZ: number;
+  readonly between: readonly [number, number];
+}
+
 export interface ExpandedBuilding {
   readonly floors: readonly PlacedFloor[];
   readonly walls: readonly PlacedEdge[];
   /** Applied after the walls, so a doorway wins over the wall it interrupts. */
   readonly openings: readonly PlacedEdge[];
+  readonly stairs: readonly PlacedStairs[];
 }
 
 interface Footprint {
@@ -104,72 +113,96 @@ function rotateEdge(
 export function expandBuilding(placement: BuildingPlacement): ExpandedBuilding {
   const { template } = placement;
   const footprint = footprintOf(template);
-  const turns = ((placement.quarterTurns ?? 0) % 4 + 4) % 4;
+  const turns = (((placement.quarterTurns ?? 0) % 4) + 4) % 4;
   const [offsetX, offsetZ] = placement.at;
 
   const floors: PlacedFloor[] = [];
   const walls: PlacedEdge[] = [];
   const openings: PlacedEdge[] = [];
+  const stairs: PlacedStairs[] = [];
 
-  // Which local tiles belong to the building at all. A boundary with one of
-  // these on the far side is a partition; anything else faces outdoors.
+  // Which local tiles the building occupies, floor by floor. A boundary with
+  // one of these on the far side is a partition; anything else faces outdoors.
   const occupied = new Set<string>();
   for (const room of template.rooms) {
+    const level = room.level ?? 0;
     for (let z = room.from[1]; z <= room.to[1]; z += 1) {
       for (let x = room.from[0]; x <= room.to[0]; x += 1) {
-        occupied.add(`${x},${z}`);
+        occupied.add(`${level}:${x},${z}`);
       }
     }
   }
 
-  function placeFloor(localX: number, localZ: number, floor: FloorId): void {
+  function placeFloor(level: number, localX: number, localZ: number, floor: FloorId): void {
     const [x, z] = rotateTile(localX, localZ, turns, footprint);
-    floors.push({ tileX: x + offsetX, tileZ: z + offsetZ, floor });
+    floors.push({ level, tileX: x + offsetX, tileZ: z + offsetZ, floor });
   }
 
   function placeEdge(
     target: PlacedEdge[],
+    level: number,
     localX: number,
     localZ: number,
     side: EdgeSide,
     type: EdgeId | null,
   ): void {
     const [x, z, rotatedSide] = rotateEdge(localX, localZ, side, turns, footprint);
-    target.push({ tileX: x + offsetX, tileZ: z + offsetZ, side: rotatedSide, type });
+    target.push({ level, tileX: x + offsetX, tileZ: z + offsetZ, side: rotatedSide, type });
   }
 
   function wallBetween(
+    level: number,
     localX: number,
     localZ: number,
     side: EdgeSide,
     beyondX: number,
     beyondZ: number,
   ): void {
-    const shared = occupied.has(`${beyondX},${beyondZ}`);
-    placeEdge(walls, localX, localZ, side, shared ? template.interiorWalls : template.exteriorWalls);
+    const shared = occupied.has(`${level}:${beyondX},${beyondZ}`);
+    placeEdge(
+      walls,
+      level,
+      localX,
+      localZ,
+      side,
+      shared ? template.interiorWalls : template.exteriorWalls,
+    );
   }
 
   for (const room of template.rooms) {
+    const level = room.level ?? 0;
     const [fromX, fromZ] = room.from;
     const [toX, toZ] = room.to;
 
     for (let z = fromZ; z <= toZ; z += 1) {
       for (let x = fromX; x <= toX; x += 1) {
-        placeFloor(x, z, room.floor);
+        placeFloor(level, x, z, room.floor);
       }
-      wallBetween(fromX, z, 'west', fromX - 1, z);
-      wallBetween(toX + 1, z, 'west', toX + 1, z);
+      wallBetween(level, fromX, z, 'west', fromX - 1, z);
+      wallBetween(level, toX + 1, z, 'west', toX + 1, z);
     }
 
     for (let x = fromX; x <= toX; x += 1) {
-      wallBetween(x, fromZ, 'north', x, fromZ - 1);
-      wallBetween(x, toZ + 1, 'north', x, toZ + 1);
+      wallBetween(level, x, fromZ, 'north', x, fromZ - 1);
+      wallBetween(level, x, toZ + 1, 'north', x, toZ + 1);
     }
   }
 
   for (const opening of template.openings) {
-    placeEdge(openings, opening.at[0], opening.at[1], opening.side, opening.type ?? null);
+    placeEdge(
+      openings,
+      opening.level ?? 0,
+      opening.at[0],
+      opening.at[1],
+      opening.side,
+      opening.type ?? null,
+    );
   }
 
-  return { floors, walls, openings };
+  for (const flight of template.stairs ?? []) {
+    const [x, z] = rotateTile(flight.at[0], flight.at[1], turns, footprint);
+    stairs.push({ tileX: x + offsetX, tileZ: z + offsetZ, between: flight.between });
+  }
+
+  return { floors, walls, openings, stairs };
 }

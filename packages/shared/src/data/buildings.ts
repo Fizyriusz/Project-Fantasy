@@ -30,7 +30,15 @@ export const HOUSE: BuildingTemplate = {
     { name: 'łazienka', from: [7, 0], to: [9, 3], floor: 'tiles' },
     { name: 'przedpokój', from: [0, 4], to: [2, 7], floor: 'tiles' },
     { name: 'salon', from: [3, 4], to: [9, 7], floor: 'wood' },
+
+    { name: 'podest', from: [0, 0], to: [2, 3], floor: 'wood', level: 1 },
+    { name: 'sypialnia od ogrodu', from: [3, 0], to: [9, 3], floor: 'wood', level: 1 },
+    { name: 'korytarz', from: [0, 4], to: [2, 7], floor: 'wood', level: 1 },
+    { name: 'sypialnia od ulicy', from: [3, 4], to: [9, 7], floor: 'wood', level: 1 },
   ],
+
+  // Straight up from the staircase onto the landing above it.
+  stairs: [{ at: [1, 1], between: [0, 1] }],
 
   openings: [
     // Front door, in the south wall of the hall.
@@ -53,5 +61,17 @@ export const HOUSE: BuildingTemplate = {
     { at: [10, 5], side: 'west', type: 'window' },
     { at: [10, 6], side: 'west', type: 'window' },
     { at: [0, 2], side: 'west', type: 'window' },
+
+    // --- Upstairs: the landing opens onto both bedrooms and the corridor.
+    { at: [3, 1], side: 'west', level: 1 },
+    { at: [1, 4], side: 'north', level: 1 },
+    { at: [3, 5], side: 'west', level: 1 },
+
+    { at: [4, 0], side: 'north', type: 'window', level: 1 },
+    { at: [8, 0], side: 'north', type: 'window', level: 1 },
+    { at: [5, 8], side: 'north', type: 'window', level: 1 },
+    { at: [7, 8], side: 'north', type: 'window', level: 1 },
+    { at: [10, 5], side: 'west', type: 'window', level: 1 },
+    { at: [0, 2], side: 'west', type: 'window', level: 1 },
   ],
 };

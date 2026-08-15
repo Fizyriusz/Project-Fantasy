@@ -19,14 +19,15 @@ export interface Reachable {
 export function findReachableDoor(
   fromX: number,
   fromZ: number,
+  level: number,
   map: TileMap,
 ): EdgeRef | null {
   let nearest: Reachable | null = null;
 
   for (let tileZ = Math.floor(fromZ - REACH_METRES); tileZ <= Math.floor(fromZ + REACH_METRES); tileZ += 1) {
     for (let tileX = Math.floor(fromX - REACH_METRES); tileX <= Math.floor(fromX + REACH_METRES); tileX += 1) {
-      nearest = closer(nearest, consider(fromX, fromZ, map, tileX, tileZ, 'west'));
-      nearest = closer(nearest, consider(fromX, fromZ, map, tileX, tileZ, 'north'));
+      nearest = closer(nearest, consider(fromX, fromZ, level, map, tileX, tileZ, 'west'));
+      nearest = closer(nearest, consider(fromX, fromZ, level, map, tileX, tileZ, 'north'));
     }
   }
 
@@ -36,6 +37,7 @@ export function findReachableDoor(
 function consider(
   fromX: number,
   fromZ: number,
+  level: number,
   map: TileMap,
   tileX: number,
   tileZ: number,
@@ -51,7 +53,7 @@ function consider(
   const midZ = side === 'west' ? tileZ + 0.5 : tileZ;
   const distance = Math.hypot(fromX - midX, fromZ - midZ);
 
-  return distance <= REACH_METRES ? { ref: { tileX, tileZ, side }, distance } : null;
+  return distance <= REACH_METRES ? { ref: { tileX, tileZ, side, level }, distance } : null;
 }
 
 function closer(a: Reachable | null, b: Reachable | null): Reachable | null {

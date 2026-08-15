@@ -16,6 +16,13 @@ export interface GroundPosition {
   readonly z: number;
 }
 
+/** Where the character is: a point on the ground plane, and which floor's. */
+export interface PlayerSnapshot {
+  readonly x: number;
+  readonly z: number;
+  readonly level: number;
+}
+
 /**
  * Which way the player is asking to walk, on the ground plane. Zero means
  * "stand still".
@@ -49,6 +56,7 @@ export interface EdgeRef {
   readonly tileX: number;
   readonly tileZ: number;
   readonly side: 'west' | 'north';
+  readonly level: number;
 }
 
 /** Client speaks first and only ever states intent, never state. */
@@ -84,5 +92,5 @@ export type SimToClientMessage =
   | {
       readonly type: 'snapshot';
       readonly tick: number;
-      readonly player: GroundPosition;
+      readonly player: PlayerSnapshot;
     };

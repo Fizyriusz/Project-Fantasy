@@ -1,4 +1,4 @@
-import { TEST_MAP, tileCentreX, tileCentreZ, type FloorId } from '@fantasy/shared';
+import { tileCentreX, tileCentreZ, type FloorId, type TileMap } from '@fantasy/shared';
 import {
   InstancedMesh,
   Matrix4,
@@ -29,10 +29,10 @@ const FLOOR_COLOURS: Record<FloorId, number> = {
  * docs/02-architektura.md asks for instancing from the start. Retrofitting it
  * would mean rewriting how the world is drawn.
  */
-export function createTileFloors(): Group {
+export function createTileFloors(map: TileMap): Group {
   const tilesByFloor = new Map<FloorId, { x: number; z: number }[]>();
 
-  TEST_MAP.forEachFloor((tileX, tileZ, floor) => {
+  map.forEachFloor((tileX, tileZ, floor) => {
     const tiles = tilesByFloor.get(floor);
     const centre = { x: tileCentreX(tileX), z: tileCentreZ(tileZ) };
     if (tiles === undefined) {

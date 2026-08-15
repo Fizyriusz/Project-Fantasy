@@ -1,3 +1,4 @@
+import { WORLD_DATA } from '@fantasy/shared';
 import { Color, Scene, WebGLRenderer } from 'three';
 
 import { listenForCameraRotation } from './input/cameraRotation';
@@ -5,14 +6,8 @@ import { listenForCameraZoom, listenForCameraZoomReset } from './input/cameraZoo
 import { listenForInteract } from './input/interact';
 import { listenForMovementIntent, type MovementRequest } from './input/movementIntent';
 import { createIsometricView } from './render/isometricCamera';
-import {
-  createCharacterStandIn,
-  createTemporaryLighting,
-  createTileGrid,
-} from './render/placeholderWorld';
-import { createDoors } from './render/doors';
-import { createTileFloors } from './render/tileFloors';
-import { createTileWalls } from './render/tileWalls';
+import { createLevels, LEVEL_HEIGHT_METRES } from './render/levels';
+import { createCharacterStandIn, createTemporaryLighting } from './render/placeholderWorld';
 import { createPositionInterpolator } from './render/positionInterpolator';
 import { connectToSimulation } from './sim/simConnection';
 import { createTuningPanel } from './tuning/tuningPanel';
@@ -38,16 +33,16 @@ const tuningHost = requireElement<HTMLElement>('#tuning');
 const renderer = new WebGLRenderer({ canvas, antialias: true });
 
 const character = createCharacterStandIn();
+/** The stand-in is built standing on the floor, so this is half its height. */
+const CHARACTER_LIFT_METRES = character.position.y;
 
 const scene = new Scene();
 scene.background = new Color(0x1b1f1d);
-const doors = createDoors();
-const debugGrid = createTileGrid();
-
-scene.add(createTileFloors());
-scene.add(debugGrid);
-scene.add(createTileWalls());
-scene.add(doors.group);
+const levels = createLevels();
+scene.add(levels.group);
+// Set before the first snapshot arrives, or the upper floor is briefly drawn
+// over the one the character is standing on.
+levels.showUpTo(WORLD_DATA.player.startLevel);
 scene.add(character);
 scene.add(createTemporaryLighting());
 
@@ -68,6 +63,7 @@ const playerPosition = createPositionInterpolator();
 
 let connected = false;
 let latestTick = 0;
+let playerLevel = WORLD_DATA.player.startLevel;
 
 function showConnectionStatus(): void {
   // Stays on the failure text unless the simulation answers, so silence is visible.
@@ -90,9 +86,21 @@ const simulation = connectToSimulation((message) => {
       // The client draws what it is told and decides nothing about where the
       // character is. It only chooses how to fill the gaps between snapshots.
       playerPosition.push(message.tick, message.player);
+      if (message.player.level !== playerLevel) {
+        playerLevel = message.player.level;
+        levels.showUpTo(playerLevel);
+      }
       break;
     case 'doorChanged':
-      doors.setOpen(message.door.tileX, message.door.tileZ, message.door.side, message.open);
+      for (const doors of levels.doors) {
+        doors.setOpen(
+          message.door.tileX,
+          message.door.tileZ,
+          message.door.side,
+          message.door.level,
+          message.open,
+        );
+      }
       break;
   }
   showConnectionStatus();
@@ -159,7 +167,7 @@ function applyTuning(values: TuningValues): void {
   view.setFollowHalfLife(values.cameraFollowHalfLifeMs);
   showConnectionStatus();
   playerPosition.setEnabled(values.interpolation);
-  debugGrid.visible = values.debugGrid;
+  levels.setDebugGridVisible(values.debugGrid);
 
   // The stand-in was built at the default footprint, so scaling keeps what you
   // see the same size as what collides.
@@ -186,12 +194,13 @@ renderer.setAnimationLoop(() => {
 
   const position = playerPosition.sample(now);
   if (position !== null) {
-    // Height stays untouched — that belongs to the model, not the simulation.
-    character.position.x = position.x;
-    character.position.z = position.z;
+    const floorY = playerLevel * LEVEL_HEIGHT_METRES;
+    // How high the model stands on its floor is the model's business; which
+    // floor it stands on is the simulation's.
+    character.position.set(position.x, floorY + CHARACTER_LIFT_METRES, position.z);
     // Follows the drawn position rather than the raw snapshot, or the camera
     // would judder twenty times a second while the character glides.
-    view.setTarget(position.x, position.z);
+    view.setTarget(position.x, floorY, position.z);
   }
 
   view.update(now);

@@ -6,6 +6,7 @@ export * from './data/testMap';
 export * from './world/tileMap';
 export * from './world/buildingTemplate';
 export * from './world/buildingPlacement';
+export * from './world/world';
 export * from './data/buildings';
 
 /**

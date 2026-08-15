@@ -1,4 +1,4 @@
-import { createTileMap, type TileMap } from '../world/tileMap';
+import { createWorld, type World } from '../world/world';
 import { HOUSE } from './buildings';
 
 /**
@@ -54,21 +54,28 @@ const ROWS = [
   '================================',
 ];
 
-export const TEST_MAP: TileMap = createTileMap({
+export const TEST_WORLD: World = createWorld({
   originX: -16,
   originZ: -16,
-  rows: ROWS,
   legend: LEGEND,
 
   // Placed so the front door opens onto the path running down to the road.
   buildings: [{ template: HOUSE, at: [-1, -8], quarterTurns: 0 }],
 
-  edges: [
-    // Fenced garden west of the path, tiles x -9..-3, z -5..2. Gate at x = -5.
-    { from: [-9, -5], to: [-3, -5], side: 'north', type: 'chainlink' },
-    { from: [-9, 3], to: [-6, 3], side: 'north', type: 'chainlink' },
-    { from: [-4, 3], to: [-3, 3], side: 'north', type: 'chainlink' },
-    { from: [-9, -5], to: [-9, 2], side: 'west', type: 'chainlink' },
-    { from: [-2, -5], to: [-2, 2], side: 'west', type: 'chainlink' },
+  levels: [
+    {
+      level: 0,
+      rows: ROWS,
+      edges: [
+        // Fenced garden west of the path, tiles x -9..-3, z -5..2. Gate at x = -5.
+        { from: [-9, -5], to: [-3, -5], side: 'north', type: 'chainlink' },
+        { from: [-9, 3], to: [-6, 3], side: 'north', type: 'chainlink' },
+        { from: [-4, 3], to: [-3, 3], side: 'north', type: 'chainlink' },
+        { from: [-9, -5], to: [-9, 2], side: 'west', type: 'chainlink' },
+        { from: [-2, -5], to: [-2, 2], side: 'west', type: 'chainlink' },
+      ],
+    },
+    // Nothing but open air until the house puts a floor up there.
+    { level: 1 },
   ],
 });

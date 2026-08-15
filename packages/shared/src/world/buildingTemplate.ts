@@ -17,6 +17,21 @@ export interface RoomTemplate {
   readonly from: readonly [number, number];
   readonly to: readonly [number, number];
   readonly floor: FloorId;
+  /** Whole numbers only, ground floor by default. docs/02-architektura.md. */
+  readonly level?: number;
+}
+
+/**
+ * A way between two floors. docs/02-architektura.md allows changing level only
+ * at defined points — there are no slopes and nothing walks up a gradient.
+ *
+ * Stepping onto the tile takes you to the other floor, and stepping onto the
+ * same tile up there brings you back, which is why one entry describes both
+ * directions.
+ */
+export interface StairsTemplate {
+  readonly at: readonly [number, number];
+  readonly between: readonly [number, number];
 }
 
 /**
@@ -27,6 +42,7 @@ export interface OpeningTemplate {
   readonly at: readonly [number, number];
   readonly side: EdgeSide;
   readonly type?: EdgeId | null;
+  readonly level?: number;
 }
 
 export interface BuildingTemplate {
@@ -37,6 +53,7 @@ export interface BuildingTemplate {
   readonly interiorWalls: EdgeId;
   readonly rooms: readonly RoomTemplate[];
   readonly openings: readonly OpeningTemplate[];
+  readonly stairs?: readonly StairsTemplate[];
 }
 
 export interface BuildingPlacement {

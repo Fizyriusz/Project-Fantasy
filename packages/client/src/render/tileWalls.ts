@@ -1,4 +1,4 @@
-import { EDGE_TYPES, TEST_MAP, type EdgeId, type EdgeSide } from '@fantasy/shared';
+import { EDGE_TYPES, type EdgeId, type EdgeSide, type TileMap } from '@fantasy/shared';
 import {
   BoxGeometry,
   Group,
@@ -125,10 +125,10 @@ function collectRuns(edgesOfType: readonly Run[]): readonly Run[] {
  * carried in the per-instance rotation. A map of any size stays a handful of
  * draw calls.
  */
-export function createTileWalls(): Group {
+export function createTileWalls(map: TileMap): Group {
   const byType = new Map<EdgeId, Run[]>();
 
-  TEST_MAP.forEachEdge((tileX, tileZ, side, edge) => {
+  map.forEachEdge((tileX, tileZ, side, edge) => {
     // Anything that opens is drawn separately, because it has to be able to
     // disappear on its own without rebuilding every wall on the map.
     if (EDGE_TYPES[edge].openable) {
@@ -179,7 +179,7 @@ export function createTileWalls(): Group {
       for (const [index, run] of runs.entries()) {
         const lastX = run.side === 'north' ? run.x + run.length - 1 : run.x;
         const lastZ = run.side === 'north' ? run.z : run.z + run.length - 1;
-        const extents = runExtents(TEST_MAP, [run.x, run.z], [lastX, lastZ], run.side);
+        const extents = runExtents(map, [run.x, run.z], [lastX, lastZ], run.side);
 
         const drift = (extents.end - extents.start) / 2;
 

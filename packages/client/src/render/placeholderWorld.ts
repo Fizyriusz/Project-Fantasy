@@ -1,4 +1,4 @@
-import { TEST_MAP, WORLD_DATA } from '@fantasy/shared';
+import { WORLD_DATA, type TileMap } from '@fantasy/shared';
 import {
   AmbientLight,
   BoxGeometry,
@@ -17,16 +17,16 @@ const CHARACTER_HEIGHT_METRES = 1.8;
  * Kept as a debug aid rather than scenery: it is the only way to see at a
  * glance whether a tile sits inside its square or half a metre off it.
  */
-export function createTileGrid(): GridHelper {
-  const size = Math.max(TEST_MAP.width, TEST_MAP.depth);
+export function createTileGrid(map: TileMap): GridHelper {
+  const size = Math.max(map.width, map.depth);
   const grid = new GridHelper(size, size, 0x6b7368, 0x4a5148);
 
   // GridHelper centres itself on the origin; the map need not be centred there.
   grid.position.set(
-    TEST_MAP.originX + TEST_MAP.width / 2,
+    map.originX + map.width / 2,
     // Lifted clear of the floor so the two surfaces do not fight for the same pixels.
     0.01,
-    TEST_MAP.originZ + TEST_MAP.depth / 2,
+    map.originZ + map.depth / 2,
   );
   return grid;
 }

@@ -1,10 +1,11 @@
 import {
-  TEST_MAP,
+  TEST_WORLD,
   TICK_RATE_HZ,
   WORLD_DATA,
   type ClientToSimMessage,
-  type GroundPosition,
+  type PlayerSnapshot,
   type SimToClientMessage,
+  type TileMap,
 } from '@fantasy/shared';
 
 import { edgeKey } from '@fantasy/shared';
@@ -48,7 +49,42 @@ export function createSimulation(): Simulation {
   const player = {
     x: WORLD_DATA.player.startX,
     z: WORLD_DATA.player.startZ,
+    level: WORLD_DATA.player.startLevel,
   };
+
+  // The tile the character was standing on last tick. Stairs fire on arriving
+  // at a tile, not on standing there, or one flight would bounce you forever.
+  let lastTileX = Math.floor(player.x);
+  let lastTileZ = Math.floor(player.z);
+
+  function currentLevel(): TileMap {
+    const level = TEST_WORLD.levelAt(player.level);
+    if (level === null) {
+      throw new Error(`Character is on floor ${player.level}, which was never built`);
+    }
+    return level;
+  }
+
+  /**
+   * Collision only ever consults the floor the character is on. A wall
+   * upstairs has no say in where you can walk downstairs, which is the whole
+   * point of levels being whole numbers (docs/02-architektura.md).
+   */
+  function climbStairsIfArrived(): void {
+    const tileX = Math.floor(player.x);
+    const tileZ = Math.floor(player.z);
+    if (tileX === lastTileX && tileZ === lastTileZ) {
+      return;
+    }
+
+    lastTileX = tileX;
+    lastTileZ = tileZ;
+
+    const destination = TEST_WORLD.stairsFrom(tileX, tileZ, player.level);
+    if (destination !== null) {
+      player.level = destination;
+    }
+  }
 
   // Kept as plain numbers rather than the message object, so no state of ours
   // can ever alias something that arrived from outside.
@@ -60,8 +96,10 @@ export function createSimulation(): Simulation {
   // is here, the simulation remembers what was done to it
   // (docs/02-architektura.md, "Zapis stanu").
   const openDoors = new Set<string>();
+  const doorKey = (tileX: number, tileZ: number, side: 'west' | 'north', level: number): string =>
+    `${level}:${edgeKey(tileX, tileZ, side)}`;
   const isDoorOpen = (tileX: number, tileZ: number, side: 'west' | 'north'): boolean =>
-    openDoors.has(edgeKey(tileX, tileZ, side));
+    openDoors.has(doorKey(tileX, tileZ, side, player.level));
 
   // Metres per second. The character carries momentum now, so letting go of a
   // key is a request to stop rather than a stop.
@@ -101,13 +139,14 @@ export function createSimulation(): Simulation {
     player.x += velocityX / TICK_RATE_HZ;
     player.z += velocityZ / TICK_RATE_HZ;
 
-    resolveWallCollisions(player, playerRadiusMetres, TEST_MAP, isDoorOpen);
+    resolveWallCollisions(player, playerRadiusMetres, currentLevel(), isDoorOpen);
+    climbStairsIfArrived();
   }
 
-  function snapshotPlayer(): GroundPosition {
+  function snapshotPlayer(): PlayerSnapshot {
     // Copied, never handed out directly, so a later tick cannot rewrite a
     // snapshot the client already believes in.
-    return { x: player.x, z: player.z };
+    return { x: player.x, z: player.z, level: player.level };
   }
 
   return {
@@ -121,12 +160,12 @@ export function createSimulation(): Simulation {
           intentSprinting = message.sprinting;
           return [];
         case 'interact': {
-          const door = findReachableDoor(player.x, player.z, TEST_MAP);
+          const door = findReachableDoor(player.x, player.z, player.level, currentLevel());
           if (door === null) {
             return [];
           }
 
-          const key = edgeKey(door.tileX, door.tileZ, door.side);
+          const key = doorKey(door.tileX, door.tileZ, door.side, door.level);
           const open = !openDoors.has(key);
           if (open) {
             openDoors.add(key);

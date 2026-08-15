@@ -1,4 +1,4 @@
-import { EDGE_TYPES, TEST_MAP, edgeKey } from '@fantasy/shared';
+import { EDGE_TYPES, edgeKey, type TileMap } from '@fantasy/shared';
 import { BoxGeometry, Group, Mesh, MeshLambertMaterial } from 'three';
 
 import { EDGE_APPEARANCE } from './edgeAppearance';
@@ -6,8 +6,17 @@ import { runExtents } from './edgeFitting';
 
 export interface Doors {
   readonly group: Group;
-  /** An open door is simply not drawn, which is the truth: nothing is in the way. */
-  setOpen(tileX: number, tileZ: number, side: 'west' | 'north', open: boolean): void;
+  /**
+   * An open door is simply not drawn, which is the truth: nothing is in the
+   * way. A door on another floor is not ours and is quietly ignored.
+   */
+  setOpen(
+    tileX: number,
+    tileZ: number,
+    side: 'west' | 'north',
+    level: number,
+    open: boolean,
+  ): void;
 }
 
 /**
@@ -15,12 +24,12 @@ export interface Doors {
  * few of them and each has to vanish on its own; rebuilding every wall on the
  * map to swing one door would be absurd.
  */
-export function createDoors(): Doors {
+export function createDoors(map: TileMap, level: number): Doors {
   const group = new Group();
   const leaves = new Map<string, Mesh>();
   const materials = new Map<string, MeshLambertMaterial>();
 
-  TEST_MAP.forEachEdge((tileX, tileZ, side, edge) => {
+  map.forEachEdge((tileX, tileZ, side, edge) => {
     const type = EDGE_TYPES[edge];
     if (!type.openable) {
       return;
@@ -32,7 +41,7 @@ export function createDoors(): Doors {
       materials.set(edge, material);
     }
 
-    const extents = runExtents(TEST_MAP, [tileX, tileZ], [tileX, tileZ], side);
+    const extents = runExtents(map, [tileX, tileZ], [tileX, tileZ], side);
     const length = 1 + extents.start + extents.end;
     const drift = (extents.end - extents.start) / 2;
 
@@ -56,7 +65,10 @@ export function createDoors(): Doors {
   return {
     group,
 
-    setOpen(tileX, tileZ, side, open): void {
+    setOpen(tileX, tileZ, side, doorLevel, open): void {
+      if (doorLevel !== level) {
+        return;
+      }
       const leaf = leaves.get(edgeKey(tileX, tileZ, side));
       if (leaf !== undefined) {
         leaf.visible = !open;

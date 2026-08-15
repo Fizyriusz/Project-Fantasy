@@ -70,7 +70,7 @@ export interface IsometricView {
   rotate(quarterTurns: 1 | -1, nowMs: number): void;
 
   /** Where the camera should be looking. Reached gradually, not immediately. */
-  setTarget(x: number, z: number): void;
+  setTarget(x: number, y: number, z: number): void;
 
   /** Advances the turn animation and the follow. Call once per drawn frame. */
   update(nowMs: number): void;
@@ -129,8 +129,10 @@ export function createIsometricView(aspectRatio: number): IsometricView {
 
   // Where the camera is asked to look, and where it has actually got to.
   let targetX = 0;
+  let targetY = 0;
   let targetZ = 0;
   let focusX = 0;
+  let focusY = 0;
   let focusZ = 0;
   let lastUpdateMs: number | null = null;
 
@@ -138,10 +140,10 @@ export function createIsometricView(aspectRatio: number): IsometricView {
 
   function placeCamera(): void {
     const horizontalDistance = DISTANCE_METRES * Math.cos(ELEVATION_RADIANS);
-    focusPoint.set(focusX, 0, focusZ);
+    focusPoint.set(focusX, focusY, focusZ);
     camera.position.set(
       focusX + horizontalDistance * Math.sin(currentAzimuth),
-      DISTANCE_METRES * Math.sin(ELEVATION_RADIANS),
+      focusY + DISTANCE_METRES * Math.sin(ELEVATION_RADIANS),
       focusZ + horizontalDistance * Math.cos(currentAzimuth),
     );
     camera.lookAt(focusPoint);
@@ -183,8 +185,9 @@ export function createIsometricView(aspectRatio: number): IsometricView {
       rotationStartedAtMs = nowMs;
     },
 
-    setTarget(x: number, z: number): void {
+    setTarget(x: number, y: number, z: number): void {
       targetX = x;
+      targetY = y;
       targetZ = z;
     },
 
@@ -207,12 +210,16 @@ export function createIsometricView(aspectRatio: number): IsometricView {
 
       if (followHalfLifeMs <= 0 || elapsedMs <= 0) {
         focusX = targetX;
+        focusY = targetY;
         focusZ = targetZ;
       } else {
         // Halving per half-life rather than a fixed fraction per frame, so the
         // lag feels the same at 30 frames a second as at 144.
         const caughtUp = 1 - Math.pow(0.5, elapsedMs / followHalfLifeMs);
         focusX += (targetX - focusX) * caughtUp;
+        // Climbing a storey glides rather than jumps, for the same reason as
+        // walking: the camera is following a body, not teleporting with it.
+        focusY += (targetY - focusY) * caughtUp;
         focusZ += (targetZ - focusZ) * caughtUp;
       }
 
