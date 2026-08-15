@@ -13,6 +13,25 @@ import { edgeExtent, type EdgeSide, type TileMap } from '@fantasy/shared';
  * The way to have no seam at all is to have no join: straight stretches of one
  * kind of wall are drawn as a single box.
  */
+/**
+ * How far short of the far face a stretch of wall stops when it reaches into a
+ * perpendicular one.
+ *
+ * Reaching exactly half the other wall's thickness lands its end cap precisely
+ * in the plane of that wall's outer face — a whole wall's width and height of
+ * two surfaces at identical depth, which is the largest such coincidence in
+ * the scene by far. Stopping a couple of millimetres short buries the cap
+ * inside instead, where nothing can see it.
+ *
+ * What is left unfilled at the very outer corner is those two millimetres: a
+ * twentieth of a pixel at this camera distance.
+ */
+const BURY_INSIDE_METRES = 0.002;
+
+function buried(extension: number): number {
+  return extension > 0 ? Math.max(extension - BURY_INSIDE_METRES, 0) : 0;
+}
+
 export function runExtents(
   map: TileMap,
   first: readonly [number, number],
@@ -20,7 +39,7 @@ export function runExtents(
   side: EdgeSide,
 ): { readonly start: number; readonly end: number } {
   return {
-    start: edgeExtent(map, first[0], first[1], side).startExtension,
-    end: edgeExtent(map, last[0], last[1], side).endExtension,
+    start: buried(edgeExtent(map, first[0], first[1], side).startExtension),
+    end: buried(edgeExtent(map, last[0], last[1], side).endExtension),
   };
 }
