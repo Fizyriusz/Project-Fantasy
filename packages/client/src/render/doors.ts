@@ -1,7 +1,8 @@
-import { EDGE_TYPES, TEST_MAP, edgeExtent, edgeKey } from '@fantasy/shared';
+import { EDGE_TYPES, TEST_MAP, edgeKey } from '@fantasy/shared';
 import { BoxGeometry, Group, Mesh, MeshLambertMaterial } from 'three';
 
 import { EDGE_APPEARANCE } from './edgeAppearance';
+import { runExtents } from './edgeFitting';
 
 export interface Doors {
   readonly group: Group;
@@ -31,9 +32,9 @@ export function createDoors(): Doors {
       materials.set(edge, material);
     }
 
-    const { startExtension, endExtension } = edgeExtent(TEST_MAP, tileX, tileZ, side);
-    const length = 1 + startExtension + endExtension;
-    const drift = (endExtension - startExtension) / 2;
+    const extents = runExtents(TEST_MAP, [tileX, tileZ], [tileX, tileZ], side);
+    const length = 1 + extents.start + extents.end;
+    const drift = (extents.end - extents.start) / 2;
 
     const leaf = new Mesh(
       side === 'north'

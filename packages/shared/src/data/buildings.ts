@@ -42,5 +42,16 @@ export const HOUSE: BuildingTemplate = {
     { at: [3, 5], side: 'west' },
     { at: [4, 4], side: 'north' },
     { at: [3, 1], side: 'west' },
+
+    // Windows, all in outside walls. Glass stops you exactly as brick does;
+    // the only difference is that you can see through it.
+    { at: [4, 0], side: 'north', type: 'window' },
+    { at: [5, 0], side: 'north', type: 'window' },
+    { at: [8, 0], side: 'north', type: 'window' },
+    { at: [5, 8], side: 'north', type: 'window' },
+    { at: [7, 8], side: 'north', type: 'window' },
+    { at: [10, 5], side: 'west', type: 'window' },
+    { at: [10, 6], side: 'west', type: 'window' },
+    { at: [0, 2], side: 'west', type: 'window' },
   ],
 };

@@ -20,9 +20,26 @@ export interface TuningValues {
   cameraFollowHalfLifeMs: number;
   cameraRotationDurationMs: number;
   interpolation: boolean;
+  debugGrid: boolean;
 }
 
-export type TuningNumberKey = Exclude<keyof TuningValues, 'interpolation'>;
+export type TuningToggleKey = {
+  [K in keyof TuningValues]: TuningValues[K] extends boolean ? K : never;
+}[keyof TuningValues];
+
+export type TuningNumberKey = Exclude<keyof TuningValues, TuningToggleKey>;
+
+export interface ToggleDefinition {
+  readonly key: TuningToggleKey;
+  readonly label: string;
+  readonly whenOn: string;
+  readonly whenOff: string;
+}
+
+export const TOGGLES: readonly ToggleDefinition[] = [
+  { key: 'interpolation', label: 'Interpolacja', whenOn: 'włączona', whenOff: 'wyłączona' },
+  { key: 'debugGrid', label: 'Siatka pomocnicza', whenOn: 'widoczna', whenOff: 'ukryta' },
+];
 
 export interface SliderDefinition {
   readonly key: TuningNumberKey;
@@ -49,6 +66,7 @@ export const DEFAULT_TUNING: TuningValues = {
   cameraFollowHalfLifeMs: DEFAULT_FOLLOW_HALF_LIFE_MS,
   cameraRotationDurationMs: DEFAULT_ROTATION_DURATION_MS,
   interpolation: true,
+  debugGrid: true,
 };
 
 export const SLIDERS: readonly SliderDefinition[] = [

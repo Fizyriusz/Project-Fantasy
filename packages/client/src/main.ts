@@ -42,9 +42,10 @@ const character = createCharacterStandIn();
 const scene = new Scene();
 scene.background = new Color(0x1b1f1d);
 const doors = createDoors();
+const debugGrid = createTileGrid();
 
 scene.add(createTileFloors());
-scene.add(createTileGrid());
+scene.add(debugGrid);
 scene.add(createTileWalls());
 scene.add(doors.group);
 scene.add(character);
@@ -158,6 +159,7 @@ function applyTuning(values: TuningValues): void {
   view.setFollowHalfLife(values.cameraFollowHalfLifeMs);
   showConnectionStatus();
   playerPosition.setEnabled(values.interpolation);
+  debugGrid.visible = values.debugGrid;
 
   // The stand-in was built at the default footprint, so scaling keeps what you
   // see the same size as what collides.

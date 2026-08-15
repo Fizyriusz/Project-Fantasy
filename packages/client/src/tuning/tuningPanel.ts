@@ -1,4 +1,10 @@
-import { DEFAULT_TUNING, SLIDERS, type TuningValues } from './tuningValues';
+import {
+  DEFAULT_TUNING,
+  SLIDERS,
+  TOGGLES,
+  type TuningToggleKey,
+  type TuningValues,
+} from './tuningValues';
 
 function element<K extends keyof HTMLElementTagNameMap>(
   tag: K,
@@ -47,7 +53,12 @@ export function createTuningPanel(
         input.value = String(values[key]);
       }
     }
-    interpolationInput.checked = values.interpolation;
+    for (const checkbox of checkboxes) {
+      const key = checkbox.dataset['key'] as TuningToggleKey | undefined;
+      if (key !== undefined) {
+        checkbox.checked = values[key];
+      }
+    }
     announce();
   });
   header.append(title, reset);
@@ -89,37 +100,39 @@ export function createTuningPanel(
     body.append(row);
   }
 
-  const interpolationRow = element('label', 'tuning-row tuning-toggle');
-  const interpolationCaption = element('span', 'tuning-caption');
-  const interpolationReadout = element('span', 'tuning-readout');
-  const interpolationInput = element('input');
-  interpolationInput.type = 'checkbox';
-  interpolationInput.checked = values.interpolation;
+  const checkboxes: HTMLInputElement[] = [];
 
-  const refreshInterpolation = (): void => {
-    interpolationCaption.textContent = 'Interpolacja';
-    interpolationReadout.textContent =
-      values.interpolation === DEFAULT_TUNING.interpolation
-        ? values.interpolation
-          ? 'włączona'
-          : 'wyłączona'
-        : `${values.interpolation ? 'włączona' : 'wyłączona'}  (było ${
-            DEFAULT_TUNING.interpolation ? 'włączona' : 'wyłączona'
-          })`;
-    interpolationReadout.classList.toggle(
-      'tuning-changed',
-      values.interpolation !== DEFAULT_TUNING.interpolation,
-    );
-  };
+  for (const definition of TOGGLES) {
+    const row = element('label', 'tuning-row tuning-toggle');
+    const caption = element('span', 'tuning-caption');
+    const readout = element('span', 'tuning-readout');
 
-  interpolationInput.addEventListener('change', () => {
-    values.interpolation = interpolationInput.checked;
-    announce();
-  });
+    const input = element('input');
+    input.type = 'checkbox';
+    input.checked = values[definition.key];
+    input.dataset['key'] = definition.key;
+    checkboxes.push(input);
 
-  rows.push(refreshInterpolation);
-  interpolationRow.append(interpolationCaption, interpolationInput, interpolationReadout);
-  body.append(interpolationRow);
+    const word = (on: boolean): string => (on ? definition.whenOn : definition.whenOff);
+
+    const refresh = (): void => {
+      const current = values[definition.key];
+      const original = DEFAULT_TUNING[definition.key];
+      caption.textContent = definition.label;
+      readout.textContent =
+        current === original ? word(current) : `${word(current)}  (było ${word(original)})`;
+      readout.classList.toggle('tuning-changed', current !== original);
+    };
+
+    input.addEventListener('change', () => {
+      values[definition.key] = input.checked;
+      announce();
+    });
+
+    rows.push(refresh);
+    row.append(caption, input, readout);
+    body.append(row);
+  }
 
   // Collapsed out of the way for judging feel, because a panel in the corner
   // of the eye is itself a distraction.

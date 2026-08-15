@@ -1,4 +1,4 @@
-import { DEFAULT_TUNING, type TuningValues } from './tuningValues';
+import { DEFAULT_TUNING, type TuningToggleKey, type TuningValues } from './tuningValues';
 
 const ENDPOINT = '/__tuning';
 
@@ -24,6 +24,11 @@ function isTuningKey(key: string): key is keyof TuningValues {
   return key in DEFAULT_TUNING;
 }
 
+/** Told apart by what the default is, so a new toggle needs nothing added here. */
+function isToggleKey(key: keyof TuningValues): key is TuningToggleKey {
+  return typeof DEFAULT_TUNING[key] === 'boolean';
+}
+
 /**
  * Reads back whatever was left on disk, so a page reload does not throw away
  * a session of careful adjustment. Anything missing or malformed falls back to
@@ -43,9 +48,9 @@ export async function loadTuning(): Promise<TuningValues> {
       if (!isTuningKey(key)) {
         continue;
       }
-      if (key === 'interpolation') {
+      if (isToggleKey(key)) {
         if (typeof entry.teraz === 'boolean') {
-          values.interpolation = entry.teraz;
+          values[key] = entry.teraz;
         }
       } else if (typeof entry.teraz === 'number') {
         values[key] = entry.teraz;

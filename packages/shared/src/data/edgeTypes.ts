@@ -43,6 +43,18 @@ export const EDGE_TYPES = {
     heightMetres: 2.5,
     thicknessMetres: 0.12,
   },
+  window: {
+    label: 'okno',
+    blocksMovement: true,
+    // The whole reason this column exists. Nothing acts on it until walls
+    // start hiding things (krok 9) and mobs get eyes in Faza II.
+    blocksSight: false,
+    openable: false,
+    heightMetres: 2.5,
+    // As thick as the brick it sits in. A thinner pane would leave a visible
+    // recess on both faces of the wall.
+    thicknessMetres: 0.25,
+  },
   door: {
     label: 'drzwi',
     blocksMovement: true,
