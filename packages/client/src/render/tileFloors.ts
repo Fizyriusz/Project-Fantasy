@@ -17,6 +17,8 @@ const FLOOR_COLOURS: Record<FloorId, number> = {
   grass: 0x3a4038,
   concrete: 0x6d6f68,
   asphalt: 0x33343a,
+  wood: 0x8a6f4d,
+  tiles: 0x9a9689,
 };
 
 /**

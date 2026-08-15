@@ -14,6 +14,8 @@ export const FLOOR_TYPES = {
   grass: { label: 'trawa' },
   concrete: { label: 'beton' },
   asphalt: { label: 'asfalt' },
+  wood: { label: 'deski' },
+  tiles: { label: 'terakota' },
 } as const satisfies Record<string, FloorType>;
 
 export type FloorId = keyof typeof FLOOR_TYPES;

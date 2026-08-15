@@ -4,6 +4,9 @@ export * from './data/floorTypes';
 export * from './data/edgeTypes';
 export * from './data/testMap';
 export * from './world/tileMap';
+export * from './world/buildingTemplate';
+export * from './world/buildingPlacement';
+export * from './data/buildings';
 
 /**
  * Fixed simulation tick rate. See docs/02-architektura.md — logic never depends
