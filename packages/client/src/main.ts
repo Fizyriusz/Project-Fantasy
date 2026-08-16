@@ -9,6 +9,7 @@ import { createIsometricView } from './render/isometricCamera';
 import { createLevels, LEVEL_HEIGHT_METRES } from './render/levels';
 import { createCharacterStandIn, createTemporaryLighting } from './render/placeholderWorld';
 import { createPositionInterpolator } from './render/positionInterpolator';
+import { createRoofs } from './render/roofs';
 import { climbHeight } from './render/stairs';
 import { connectToSimulation } from './sim/simConnection';
 import { createTuningPanel } from './tuning/tuningPanel';
@@ -40,10 +41,8 @@ const CHARACTER_LIFT_METRES = character.position.y;
 const scene = new Scene();
 scene.background = new Color(0x1b1f1d);
 const levels = createLevels();
-scene.add(levels.group);
-// Set before the first snapshot arrives, or the upper floor is briefly drawn
-// over the one the character is standing on.
-levels.showUpTo(WORLD_DATA.player.startLevel);
+const roofs = createRoofs();
+scene.add(levels.group, roofs.group);
 scene.add(character);
 scene.add(createTemporaryLighting());
 
@@ -81,6 +80,40 @@ function whereYouAre(): string {
 /** How far up a flight the floor above starts being drawn. */
 const HALFWAY_UP = 0.5;
 
+/** No storey is above the top of the world, so this one shows them all. */
+const ALL_STOREYS = Number.POSITIVE_INFINITY;
+
+/**
+ * Decides how much of the buildings to draw.
+ *
+ * Outdoors you are looking *at* a house, so it keeps its roof and every storey.
+ * Indoors you are looking *into* one, so the roof comes off and the floors
+ * above your head go with it — otherwise you are staring at a ceiling.
+ *
+ * The roof is taken off building by building; the storeys are still hidden by
+ * height across the whole map, which is the same thing while the map holds one
+ * building and will need splitting when it holds two.
+ */
+function updateVisibility(): void {
+  const building = playerRoom === null ? null : TEST_WORLD.rooms[playerRoom].building;
+
+  levels.showUpTo(
+    building === null
+      ? ALL_STOREYS
+      : // The floor above appears once the climb is committed rather than at
+        // the first step: near the bottom you can still change your mind, and
+        // having the ceiling vanish under you at that point reads as a glitch.
+        playerClimb >= HALFWAY_UP
+        ? playerLevel + 1
+        : playerLevel,
+  );
+  roofs.showAllExcept(building);
+}
+
+// Settled before the first snapshot arrives, or a storey is briefly drawn over
+// the one the character is standing on.
+updateVisibility();
+
 function showConnectionStatus(): void {
   // Stays on the failure text unless the simulation answers, so silence is visible.
   // The zoom rides along because it is the one tuned value the panel cannot
@@ -103,15 +136,16 @@ const simulation = connectToSimulation((message) => {
       // The client draws what it is told and decides nothing about where the
       // character is. It only chooses how to fill the gaps between snapshots.
       playerPosition.push(message.tick, message.player);
-      // The floor above appears once the climb is committed rather than at the
-      // first step: near the bottom you can still change your mind, and having
-      // the ceiling vanish under you at that point reads as a glitch.
-      if (message.player.level !== playerLevel || message.player.climb !== playerClimb) {
+      if (
+        message.player.level !== playerLevel ||
+        message.player.climb !== playerClimb ||
+        message.player.room !== playerRoom
+      ) {
         playerLevel = message.player.level;
         playerClimb = message.player.climb;
-        levels.showUpTo(playerClimb >= HALFWAY_UP ? playerLevel + 1 : playerLevel);
+        playerRoom = message.player.room;
+        updateVisibility();
       }
-      playerRoom = message.player.room;
       break;
     case 'doorChanged':
       for (const doors of levels.doors) {

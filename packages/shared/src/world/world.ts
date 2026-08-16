@@ -43,6 +43,23 @@ export interface Room {
   readonly id: number;
   readonly name: string;
   readonly level: number;
+  /** Position in `World.buildings`. Which house this room is a room of. */
+  readonly building: number;
+}
+
+/**
+ * A placed building, as a whole rather than room by room.
+ *
+ * Exists so that something can be said about the structure itself — for now
+ * only where its roof goes and when to take it off.
+ */
+export interface Building {
+  readonly id: number;
+  readonly name: string;
+  /** Its highest floor. What covers that floor is the roof. */
+  readonly topLevel: number;
+  /** Tiles the roof covers, in world coordinates. */
+  readonly roofTiles: readonly (readonly [number, number])[];
 }
 
 export interface World {
@@ -67,6 +84,9 @@ export interface World {
 
   /** Every named space, for looking one up by id. */
   readonly rooms: readonly Room[];
+
+  /** Every placed building, for looking one up by id. */
+  readonly buildings: readonly Building[];
 
   /** The room covering this tile, or null for outdoors. */
   roomAt(tileX: number, tileZ: number, level: number): Room | null;
@@ -114,15 +134,34 @@ export function createWorld(source: WorldSource): World {
 
   const rooms: Room[] = [];
   const roomByTile = new Map<string, Room>();
+  const buildings: Building[] = [];
 
-  for (const building of built) {
+  for (const [id, building] of built.entries()) {
     for (const placed of building.rooms) {
-      const room: Room = { id: rooms.length, name: placed.name, level: placed.level };
+      const room: Room = {
+        id: rooms.length,
+        name: placed.name,
+        level: placed.level,
+        building: id,
+      };
       rooms.push(room);
       for (const [tileX, tileZ] of placed.tiles) {
         roomByTile.set(levelTileKey(tileX, tileZ, placed.level), room);
       }
     }
+
+    // The roof sits over the highest floor, and covers every room on it —
+    // including a stairwell shaft, which has no floor of its own but is still
+    // indoors and still needs something over it.
+    const topLevel = Math.max(...building.rooms.map((placed) => placed.level));
+    buildings.push({
+      id,
+      name: (source.buildings ?? [])[id].template.name,
+      topLevel,
+      roofTiles: building.rooms
+        .filter((placed) => placed.level === topLevel)
+        .flatMap((placed) => placed.tiles),
+    });
   }
 
   const staircases: Staircase[] = [];
@@ -211,6 +250,7 @@ export function createWorld(source: WorldSource): World {
     },
 
     rooms,
+    buildings,
 
     roomAt(tileX: number, tileZ: number, level: number): Room | null {
       return roomByTile.get(levelTileKey(tileX, tileZ, level)) ?? null;
