@@ -20,7 +20,16 @@ export interface GroundPosition {
 export interface PlayerSnapshot {
   readonly x: number;
   readonly z: number;
+  /**
+   * Always a whole number. Collision is a flat problem on one floor, and
+   * halfway up a flight the floor that counts is still the lower one.
+   */
   readonly level: number;
+  /**
+   * How far up a flight of stairs, from 0 to 1. Purely how high to draw the
+   * character — the simulation never asks a fraction of a floor anything.
+   */
+  readonly climb: number;
 }
 
 /**

@@ -4,6 +4,7 @@ import { Group } from 'three';
 import { createDoors, type Doors } from './doors';
 import { createTileGrid } from './placeholderWorld';
 import { createTileFloors } from './tileFloors';
+import { createStairs } from './stairs';
 import { createTileWalls } from './tileWalls';
 
 /**
@@ -52,7 +53,13 @@ export function createLevels(): Levels {
     const doorsHere = createDoors(map, level);
     doors.push(doorsHere);
 
-    storey.add(createTileFloors(map), grid, createTileWalls(map), doorsHere.group);
+    storey.add(
+      createTileFloors(map),
+      grid,
+      createTileWalls(map),
+      doorsHere.group,
+      createStairs(map, level, LEVEL_HEIGHT_METRES),
+    );
     floors.set(level, storey);
     group.add(storey);
   }

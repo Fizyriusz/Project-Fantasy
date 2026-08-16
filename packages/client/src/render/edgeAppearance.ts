@@ -25,5 +25,6 @@ export const EDGE_APPEARANCE: Record<EdgeId, EdgeAppearance> = {
   wood: { colour: 0x7d6f5c, opacity: 1 },
   door: { colour: 0x5c4632, opacity: 1 },
   window: { colour: 0x9fc0c4, opacity: 0.25, sillHeightMetres: 0.9 },
+  railing: { colour: 0x6b573c, opacity: 1 },
   chainlink: { colour: 0x8c948a, opacity: 0.35 },
 };

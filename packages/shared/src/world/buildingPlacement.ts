@@ -20,8 +20,10 @@ export interface PlacedEdge {
 }
 
 export interface PlacedStairs {
-  readonly tileX: number;
-  readonly tileZ: number;
+  readonly fromX: number;
+  readonly fromZ: number;
+  readonly toX: number;
+  readonly toZ: number;
   readonly between: readonly [number, number];
 }
 
@@ -133,7 +135,10 @@ export function expandBuilding(placement: BuildingPlacement): ExpandedBuilding {
     }
   }
 
-  function placeFloor(level: number, localX: number, localZ: number, floor: FloorId): void {
+  function placeFloor(level: number, localX: number, localZ: number, floor: FloorId | null): void {
+    if (floor === null) {
+      return;
+    }
     const [x, z] = rotateTile(localX, localZ, turns, footprint);
     floors.push({ level, tileX: x + offsetX, tileZ: z + offsetZ, floor });
   }
@@ -200,8 +205,15 @@ export function expandBuilding(placement: BuildingPlacement): ExpandedBuilding {
   }
 
   for (const flight of template.stairs ?? []) {
-    const [x, z] = rotateTile(flight.at[0], flight.at[1], turns, footprint);
-    stairs.push({ tileX: x + offsetX, tileZ: z + offsetZ, between: flight.between });
+    const [fromX, fromZ] = rotateTile(flight.from[0], flight.from[1], turns, footprint);
+    const [toX, toZ] = rotateTile(flight.to[0], flight.to[1], turns, footprint);
+    stairs.push({
+      fromX: fromX + offsetX,
+      fromZ: fromZ + offsetZ,
+      toX: toX + offsetX,
+      toZ: toZ + offsetZ,
+      between: flight.between,
+    });
   }
 
   return { floors, walls, openings, stairs };

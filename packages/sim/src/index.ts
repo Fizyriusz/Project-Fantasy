@@ -5,6 +5,7 @@ import {
   type ClientToSimMessage,
   type PlayerSnapshot,
   type SimToClientMessage,
+  type Staircase,
   type TileMap,
 } from '@fantasy/shared';
 
@@ -52,10 +53,11 @@ export function createSimulation(): Simulation {
     level: WORLD_DATA.player.startLevel,
   };
 
-  // The tile the character was standing on last tick. Stairs fire on arriving
-  // at a tile, not on standing there, or one flight would bounce you forever.
-  let lastTileX = Math.floor(player.x);
-  let lastTileZ = Math.floor(player.z);
+  // The flight being walked, if any, and how far along it. While climbing the
+  // character belongs to the lower floor: collision stays a flat problem, and
+  // only the drawn height is in between.
+  let climbing: Staircase | null = null;
+  let climb = 0;
 
   function currentLevel(): TileMap {
     const level = TEST_WORLD.levelAt(player.level);
@@ -66,23 +68,72 @@ export function createSimulation(): Simulation {
   }
 
   /**
-   * Collision only ever consults the floor the character is on. A wall
-   * upstairs has no say in where you can walk downstairs, which is the whole
-   * point of levels being whole numbers (docs/02-architektura.md).
+   * Walks the character up or down a flight, one ordinary step at a time.
+   *
+   * Setting foot on the steps starts the climb; walking off either end ends
+   * it, on whichever floor that end belongs to. Nothing teleports — how high
+   * the character is drawn simply follows how far along the flight they have
+   * got.
    */
-  function climbStairsIfArrived(): void {
-    const tileX = Math.floor(player.x);
-    const tileZ = Math.floor(player.z);
-    if (tileX === lastTileX && tileZ === lastTileZ) {
+  /**
+   * Sets foot on a flight, but only at the end that matches which floor the
+   * character is standing on. Walking into the top of a flight from
+   * underneath it would otherwise hoist you a storey, and the top step is two
+   * and a half metres over your head.
+   */
+  function startClimbIfAtAFlightEnd(): void {
+    const flight = TEST_WORLD.staircaseAt(Math.floor(player.x), Math.floor(player.z));
+    if (flight === null) {
       return;
     }
 
-    lastTileX = tileX;
-    lastTileZ = tileZ;
+    const progress = TEST_WORLD.climbProgress(flight, player.x, player.z);
+    const fromTheFoot = player.level === flight.lower && progress < 0.5;
+    const fromTheLanding = player.level === flight.upper && progress > 0.5;
+    if (!fromTheFoot && !fromTheLanding) {
+      return;
+    }
 
-    const destination = TEST_WORLD.stairsFrom(tileX, tileZ, player.level);
-    if (destination !== null) {
-      player.level = destination;
+    climbing = flight;
+    player.level = flight.lower;
+  }
+
+  /**
+   * Carries the character along a flight and off either end of it.
+   *
+   * Kept on the steps sideways, because halfway up there is no floor to left
+   * or right and stepping off would be stepping into the air of the room
+   * below — which is exactly what let someone surface on the upper floor
+   * standing over the hall.
+   */
+  function followTheFlight(flight: Staircase): void {
+    const progress = TEST_WORLD.climbProgress(flight, player.x, player.z);
+
+    if (progress >= 1) {
+      player.level = flight.upper;
+      climbing = null;
+      climb = 0;
+      return;
+    }
+    if (progress <= 0) {
+      player.level = flight.lower;
+      climbing = null;
+      climb = 0;
+      return;
+    }
+
+    climb = progress;
+
+    const low = flight.sideMin + playerRadiusMetres;
+    const high = flight.sideMax - playerRadiusMetres;
+    const middle = (flight.sideMin + flight.sideMax) / 2;
+    const across = flight.axis === 'z' ? player.x : player.z;
+    const held = low > high ? middle : Math.min(Math.max(across, low), high);
+
+    if (flight.axis === 'z') {
+      player.x = held;
+    } else {
+      player.z = held;
     }
   }
 
@@ -139,14 +190,23 @@ export function createSimulation(): Simulation {
     player.x += velocityX / TICK_RATE_HZ;
     player.z += velocityZ / TICK_RATE_HZ;
 
-    resolveWallCollisions(player, playerRadiusMetres, currentLevel(), isDoorOpen);
-    climbStairsIfArrived();
+    if (climbing === null) {
+      resolveWallCollisions(player, playerRadiusMetres, currentLevel(), isDoorOpen);
+      startClimbIfAtAFlightEnd();
+    }
+
+    // Walls of the floor below do not apply on the stairs: from the second
+    // step onwards the character is above them, and the top of a flight comes
+    // out over the wall it started beside.
+    if (climbing !== null) {
+      followTheFlight(climbing);
+    }
   }
 
   function snapshotPlayer(): PlayerSnapshot {
     // Copied, never handed out directly, so a later tick cannot rewrite a
     // snapshot the client already believes in.
-    return { x: player.x, z: player.z, level: player.level };
+    return { x: player.x, z: player.z, level: player.level, climb };
   }
 
   return {

@@ -16,7 +16,12 @@ export interface RoomTemplate {
   /** Inclusive corners, in the building's own tiles. */
   readonly from: readonly [number, number];
   readonly to: readonly [number, number];
-  readonly floor: FloorId;
+  /**
+   * Null walls the rectangle without flooring it — which is exactly what a
+   * stairwell is on the storey it passes through. Without it the upper floor
+   * has no walls along the shaft, because walls come from rooms.
+   */
+  readonly floor: FloorId | null;
   /** Whole numbers only, ground floor by default. docs/02-architektura.md. */
   readonly level?: number;
 }
@@ -30,7 +35,11 @@ export interface RoomTemplate {
  * directions.
  */
 export interface StairsTemplate {
-  readonly at: readonly [number, number];
+  /** Bottom step, on the lower floor. */
+  readonly from: readonly [number, number];
+  /** Top step. Straight and axis-aligned; there are no turning flights yet. */
+  readonly to: readonly [number, number];
+  /** Lower floor first. One entry describes the flight in both directions. */
   readonly between: readonly [number, number];
 }
 

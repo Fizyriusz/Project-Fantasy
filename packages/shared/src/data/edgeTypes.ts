@@ -55,6 +55,16 @@ export const EDGE_TYPES = {
     // recess on both faces of the wall.
     thicknessMetres: 0.25,
   },
+  railing: {
+    label: 'balustrada',
+    blocksMovement: true,
+    blocksSight: false,
+    openable: false,
+    // Waist high, and drawn by whatever it guards rather than as a wall: beside
+    // a flight of stairs it has to climb with the steps.
+    heightMetres: 0.95,
+    thicknessMetres: 0.08,
+  },
   door: {
     label: 'drzwi',
     blocksMovement: true,

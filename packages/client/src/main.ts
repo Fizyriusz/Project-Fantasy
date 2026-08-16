@@ -9,6 +9,7 @@ import { createIsometricView } from './render/isometricCamera';
 import { createLevels, LEVEL_HEIGHT_METRES } from './render/levels';
 import { createCharacterStandIn, createTemporaryLighting } from './render/placeholderWorld';
 import { createPositionInterpolator } from './render/positionInterpolator';
+import { climbHeight } from './render/stairs';
 import { connectToSimulation } from './sim/simConnection';
 import { createTuningPanel } from './tuning/tuningPanel';
 import { createTuningSaver, loadTuning } from './tuning/tuningStorage';
@@ -64,6 +65,10 @@ const playerPosition = createPositionInterpolator();
 let connected = false;
 let latestTick = 0;
 let playerLevel = WORLD_DATA.player.startLevel;
+let playerClimb = 0;
+
+/** How far up a flight the floor above starts being drawn. */
+const HALFWAY_UP = 0.5;
 
 function showConnectionStatus(): void {
   // Stays on the failure text unless the simulation answers, so silence is visible.
@@ -86,9 +91,13 @@ const simulation = connectToSimulation((message) => {
       // The client draws what it is told and decides nothing about where the
       // character is. It only chooses how to fill the gaps between snapshots.
       playerPosition.push(message.tick, message.player);
-      if (message.player.level !== playerLevel) {
+      // The floor above appears once the climb is committed rather than at the
+      // first step: near the bottom you can still change your mind, and having
+      // the ceiling vanish under you at that point reads as a glitch.
+      if (message.player.level !== playerLevel || message.player.climb !== playerClimb) {
         playerLevel = message.player.level;
-        levels.showUpTo(playerLevel);
+        playerClimb = message.player.climb;
+        levels.showUpTo(playerClimb >= HALFWAY_UP ? playerLevel + 1 : playerLevel);
       }
       break;
     case 'doorChanged':
@@ -194,7 +203,7 @@ renderer.setAnimationLoop(() => {
 
   const position = playerPosition.sample(now);
   if (position !== null) {
-    const floorY = playerLevel * LEVEL_HEIGHT_METRES;
+    const floorY = climbHeight(playerLevel, playerClimb, LEVEL_HEIGHT_METRES);
     // How high the model stands on its floor is the model's business; which
     // floor it stands on is the simulation's.
     character.position.set(position.x, floorY + CHARACTER_LIFT_METRES, position.z);

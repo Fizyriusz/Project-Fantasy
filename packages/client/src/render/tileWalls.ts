@@ -130,8 +130,10 @@ export function createTileWalls(map: TileMap): Group {
 
   map.forEachEdge((tileX, tileZ, side, edge) => {
     // Anything that opens is drawn separately, because it has to be able to
-    // disappear on its own without rebuilding every wall on the map.
-    if (EDGE_TYPES[edge].openable) {
+    // disappear on its own without rebuilding every wall on the map. A railing
+    // is drawn by whatever it guards, for the same reason: beside stairs it
+    // has to rise with them, and a wall knows nothing about that.
+    if (EDGE_TYPES[edge].openable || edge === 'railing') {
       return;
     }
 
