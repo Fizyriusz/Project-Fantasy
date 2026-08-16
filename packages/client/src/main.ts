@@ -1,6 +1,7 @@
 import { TEST_WORLD, WORLD_DATA } from '@fantasy/shared';
 import { Color, Scene, WebGLRenderer } from 'three';
 
+import { installScreenshotTool } from './dev/screenshot';
 import { listenForCameraRotation } from './input/cameraRotation';
 import { listenForCameraZoom, listenForCameraZoomReset } from './input/cameraZoom';
 import { listenForInteract } from './input/interact';
@@ -202,7 +203,12 @@ listenForInteract(() => {
 
 const saveTuning = createTuningSaver();
 
+// Remembered so the screenshot tool can hand the camera back the way it found
+// it. Nothing else has any business reading it.
+let activeTuning: TuningValues = DEFAULT_TUNING;
+
 function applyTuning(values: TuningValues): void {
+  activeTuning = values;
   simulation.send({
     type: 'tune',
     player: {
@@ -232,6 +238,16 @@ function applyTuning(values: TuningValues): void {
 }
 
 if (import.meta.env.DEV) {
+  installScreenshotTool({
+    renderer,
+    scene,
+    view,
+    character,
+    restoreView: () => {
+      applyTuning(activeTuning);
+    },
+  });
+
   void loadTuning().then((values) => {
     createTuningPanel(tuningHost, values, (changed) => {
       applyTuning(changed);

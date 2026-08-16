@@ -16,6 +16,9 @@ pnpm-debug.log*
 # Local tuning experiments from the development panel
 tuning.local.json
 
+# Pictures taken with shot() in the browser console
+shots/
+
 # Environment
 .env
 .env.local
