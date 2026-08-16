@@ -13,21 +13,22 @@ import { EDGE_APPEARANCE, type EdgeAppearance } from './edgeAppearance';
 import { runExtents } from './edgeFitting';
 
 /**
- * How much shorter a wall running north to south is built than one running
- * west to east.
+ * How much shorter than its stated height a wall is actually built.
  *
- * At a corner, and wherever a partition meets an outside wall, one stretch
- * reaches past the other to fill the notch between them — so the two share a
- * patch of floor plan. Built to the same height they would also share a patch
- * of *ceiling*, and two surfaces at identical depth fight over which is in
- * front however precise the depth buffer is.
+ * Two coincidences to avoid, and one number settles both. A storey is exactly
+ * as tall as a wall, so a wall built to its full height would end in the same
+ * plane as the floor above it. And at a corner, or wherever a partition meets
+ * an outside wall, one stretch reaches past the other to fill the notch
+ * between them — built to the same height those two would share a patch of
+ * *ceiling*. Hence one step of relief for walls running west to east and two
+ * for those running north to south: no wall top lands on the floor above, and
+ * no two wall tops land on each other.
  *
- * Honest note: removing that particular coincidence did **not** cure the
- * flicker still visible where walls cross, so it was not the cause — only one
- * real coincidence fewer. Two millimetres is a twentieth of a pixel here, so
- * it costs nothing to keep while the actual cause is still being looked for.
+ * Honest note: this was tried against the flicker where walls cross and did
+ * **not** cure it, so that is still not explained. Two millimetres is a
+ * twentieth of a pixel here, which is why it costs nothing to keep.
  */
-const CROSSING_HEIGHT_RELIEF_METRES = 0.002;
+const HEIGHT_RELIEF_METRES = 0.002;
 
 /** An unbroken stretch of one kind of wall, measured in tiles. */
 interface Run {
@@ -185,9 +186,10 @@ export function createTileWalls(map: TileMap): Group {
 
         const drift = (extents.end - extents.start) / 2;
 
-        // Kept off the floor rather than off the ceiling: the top is the face
-        // the camera looks down on, and the two must not end level.
-        const relief = run.side === 'west' ? CROSSING_HEIGHT_RELIEF_METRES : 0;
+        // Taken off the top rather than the bottom: the top is the face the
+        // camera looks down on, and it is the one that must not end level with
+        // anything else.
+        const relief = HEIGHT_RELIEF_METRES * (run.side === 'west' ? 2 : 1);
         scale.set(
           run.length + extents.start + extents.end,
           (band.height - relief) / band.height,

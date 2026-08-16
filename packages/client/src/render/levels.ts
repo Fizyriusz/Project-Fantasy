@@ -1,4 +1,4 @@
-import { TEST_WORLD } from '@fantasy/shared';
+import { EDGE_TYPES, TEST_WORLD } from '@fantasy/shared';
 import { Group } from 'three';
 
 import { createDoors, type Doors } from './doors';
@@ -8,10 +8,16 @@ import { createStairs } from './stairs';
 import { createTileWalls } from './tileWalls';
 
 /**
- * Height of one storey. A little more than a wall is tall, so the floor above
- * does not land level with the tops of the walls below it.
+ * Height of one storey: exactly as tall as the walls holding it up.
+ *
+ * It used to be ten centimetres more, to keep the floor above out of the same
+ * plane as the tops of the walls below. That bought a clean seam at the price
+ * of a real hole: ten centimetres of nothing ran right round the building at
+ * first-floor level, and you could see the inside through it. Walls now stop a
+ * couple of millimetres short of the floor above instead — far too little to
+ * see, and still not the same plane.
  */
-export const LEVEL_HEIGHT_METRES = 2.6;
+export const LEVEL_HEIGHT_METRES = EDGE_TYPES.brick.heightMetres;
 
 export interface Levels {
   readonly group: Group;
