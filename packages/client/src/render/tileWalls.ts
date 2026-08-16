@@ -1,6 +1,7 @@
 import { EDGE_TYPES, type EdgeId, type EdgeSide, type TileMap } from '@fantasy/shared';
 import {
   BoxGeometry,
+  Color,
   Group,
   InstancedMesh,
   Matrix4,
@@ -10,25 +11,33 @@ import {
 } from 'three';
 
 import { EDGE_APPEARANCE, type EdgeAppearance } from './edgeAppearance';
-import { runExtents } from './edgeFitting';
+import { runExtents, surroundingWall } from './edgeFitting';
 
 /**
- * How much shorter than its stated height a wall is actually built.
+ * How far a wall is sunk below where it nominally stands.
  *
  * Two coincidences to avoid, and one number settles both. A storey is exactly
- * as tall as a wall, so a wall built to its full height would end in the same
- * plane as the floor above it. And at a corner, or wherever a partition meets
- * an outside wall, one stretch reaches past the other to fill the notch
- * between them — built to the same height those two would share a patch of
- * *ceiling*. Hence one step of relief for walls running west to east and two
- * for those running north to south: no wall top lands on the floor above, and
- * no two wall tops land on each other.
+ * as tall as a wall, so a wall left where it nominally stands would end in the
+ * same plane as the floor above it. And at a corner, or wherever a partition
+ * meets an outside wall, one stretch reaches past the other to fill the notch
+ * between them — left at the same height those two would share a patch of
+ * *ceiling*. Hence one step for walls running west to east and two for those
+ * running north to south.
  *
- * Honest note: this was tried against the flicker where walls cross and did
- * **not** cure it, so that is still not explained. Two millimetres is a
- * twentieth of a pixel here, which is why it costs nothing to keep.
+ * Sunk rather than shortened, which is the whole point: shortening left a slot
+ * of open air between one storey's wall tops and the next storey's wall
+ * bottoms. Four millimetres is a tenth of a pixel, but antialiasing renders a
+ * tenth of a pixel of darkness as a faint line, and that line ran right round
+ * the building. Sinking both storeys by the same amount closes it — a wall now
+ * ends exactly where the wall above it begins, and two box faces meeting back
+ * to back never both get drawn.
  */
 const HEIGHT_RELIEF_METRES = 0.002;
+
+/** Walls running north to south are sunk twice as far as those running across. */
+export function wallRelief(side: EdgeSide): number {
+  return HEIGHT_RELIEF_METRES * (side === 'west' ? 2 : 1);
+}
 
 /** An unbroken stretch of one kind of wall, measured in tiles. */
 interface Run {
@@ -43,23 +52,32 @@ interface Band {
   readonly height: number;
   readonly centreY: number;
   readonly opacity: number;
+  /**
+   * The solid part under a window. It is not part of the window at all — it is
+   * the wall the window was cut into, so it is painted in that wall's colour
+   * rather than in glass blue.
+   */
+  readonly isSill: boolean;
 }
 
 function bandsOf(fullHeight: number, appearance: EdgeAppearance): readonly Band[] {
   const sill = appearance.sillHeightMetres ?? 0;
   if (sill <= 0) {
-    return [{ height: fullHeight, centreY: fullHeight / 2, opacity: appearance.opacity }];
+    return [
+      { height: fullHeight, centreY: fullHeight / 2, opacity: appearance.opacity, isSill: false },
+    ];
   }
 
   // Meeting exactly at the top of the parapet, never overlapping it: the two
   // bands are equally thick, so an overlap would put their side faces in one
   // plane and set them fighting over the strip they share.
   return [
-    { height: sill, centreY: sill / 2, opacity: 1 },
+    { height: sill, centreY: sill / 2, opacity: 1, isSill: true },
     {
       height: fullHeight - sill,
       centreY: (fullHeight + sill) / 2,
       opacity: appearance.opacity,
+      isSill: false,
     },
   ];
 }
@@ -152,6 +170,7 @@ export function createTileWalls(map: TileMap): Group {
   const position = new Vector3();
   const rotation = new Quaternion();
   const scale = new Vector3();
+  const sillColour = new Color();
   const quarterTurn = new Quaternion().setFromAxisAngle(new Vector3(0, 1, 0), Math.PI / 2);
   const noTurn = new Quaternion();
 
@@ -168,7 +187,10 @@ export function createTileWalls(map: TileMap): Group {
       const mesh = new InstancedMesh(
         geometry,
         new MeshLambertMaterial({
-          color: appearance.colour,
+          // A sill takes its colour per instance, from whatever wall each
+          // window happens to sit in; white here so the instance colour is the
+          // only thing deciding.
+          color: band.isSill ? 0xffffff : appearance.colour,
           transparent: band.opacity < 1,
           opacity: band.opacity,
           // See-through things must not write depth. Otherwise a pane hides
@@ -186,16 +208,14 @@ export function createTileWalls(map: TileMap): Group {
 
         const drift = (extents.end - extents.start) / 2;
 
-        // Taken off the top rather than the bottom: the top is the face the
-        // camera looks down on, and it is the one that must not end level with
-        // anything else.
-        const relief = HEIGHT_RELIEF_METRES * (run.side === 'west' ? 2 : 1);
-        scale.set(
-          run.length + extents.start + extents.end,
-          (band.height - relief) / band.height,
-          1,
-        );
-        const centreY = band.centreY - relief / 2;
+        const relief = wallRelief(run.side);
+        scale.set(run.length + extents.start + extents.end, 1, 1);
+        const centreY = band.centreY - relief;
+
+        if (band.isSill) {
+          const wall = surroundingWall(map, run.x, run.z, run.side);
+          mesh.setColorAt(index, sillColour.setHex(EDGE_APPEARANCE[wall ?? edge].colour));
+        }
 
         if (run.side === 'north') {
           position.set(run.x + run.length / 2 + drift, centreY, run.z);
@@ -207,6 +227,9 @@ export function createTileWalls(map: TileMap): Group {
         mesh.setMatrixAt(index, matrix.compose(position, rotation, scale));
       }
       mesh.instanceMatrix.needsUpdate = true;
+      if (mesh.instanceColor !== null) {
+        mesh.instanceColor.needsUpdate = true;
+      }
 
       walls.add(mesh);
     }

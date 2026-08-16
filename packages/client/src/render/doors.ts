@@ -2,7 +2,8 @@ import { EDGE_TYPES, edgeKey, type TileMap } from '@fantasy/shared';
 import { BoxGeometry, Group, Mesh, MeshLambertMaterial } from 'three';
 
 import { EDGE_APPEARANCE } from './edgeAppearance';
-import { runExtents } from './edgeFitting';
+import { runExtents, surroundingWall } from './edgeFitting';
+import { wallRelief } from './tileWalls';
 
 export interface Doors {
   readonly group: Group;
@@ -60,6 +61,44 @@ export function createDoors(map: TileMap, level: number): Doors {
 
     leaves.set(edgeKey(tileX, tileZ, side), leaf);
     group.add(leaf);
+
+    // The lintel: the piece of wall left above the doorway. Without it the
+    // opening runs from the floor to the ceiling and the door hangs in it like
+    // a saloon door, with daylight over the top.
+    //
+    // Not part of the leaf, because it does not move. Opening a door leaves the
+    // wall above it exactly where it was.
+    const wall = surroundingWall(map, tileX, tileZ, side);
+    if (wall === null) {
+      return;
+    }
+
+    const wallType = EDGE_TYPES[wall];
+    const headerHeight = wallType.heightMetres - wallRelief(side) - type.heightMetres;
+    if (headerHeight <= 0) {
+      return;
+    }
+
+    let headerMaterial = materials.get(wall);
+    if (headerMaterial === undefined) {
+      headerMaterial = new MeshLambertMaterial({ color: EDGE_APPEARANCE[wall].colour });
+      materials.set(wall, headerMaterial);
+    }
+
+    const header = new Mesh(
+      side === 'north'
+        ? new BoxGeometry(length, headerHeight, wallType.thicknessMetres)
+        : new BoxGeometry(wallType.thicknessMetres, headerHeight, length),
+      headerMaterial,
+    );
+    const headerCentreY = type.heightMetres + headerHeight / 2;
+
+    if (side === 'north') {
+      header.position.set(tileX + 0.5 + drift, headerCentreY, tileZ);
+    } else {
+      header.position.set(tileX, headerCentreY, tileZ + 0.5 + drift);
+    }
+    group.add(header);
   });
 
   return {
