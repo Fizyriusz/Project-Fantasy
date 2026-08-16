@@ -31,6 +31,20 @@ export interface Staircase {
   readonly upper: number;
 }
 
+/**
+ * A named space inside a building.
+ *
+ * Rooms are written out by hand in the template, not worked out from the walls.
+ * That is deliberate: opening a door must not merge the kitchen and the hall
+ * into one space, and a space nobody named cannot be talked about.
+ */
+export interface Room {
+  /** Position in `World.rooms`. Cheap to send and to compare. */
+  readonly id: number;
+  readonly name: string;
+  readonly level: number;
+}
+
 export interface World {
   /** Floors that exist, lowest first. */
   readonly levels: readonly number[];
@@ -50,6 +64,12 @@ export interface World {
 
   /** How far up a flight a point is: 0 at the bottom step, 1 past the top one. */
   climbProgress(flight: Staircase, x: number, z: number): number;
+
+  /** Every named space, for looking one up by id. */
+  readonly rooms: readonly Room[];
+
+  /** The room covering this tile, or null for outdoors. */
+  roomAt(tileX: number, tileZ: number, level: number): Room | null;
 }
 
 export interface WorldLevelSource {
@@ -85,8 +105,26 @@ function tileKey(tileX: number, tileZ: number): string {
   return `${tileX},${tileZ}`;
 }
 
+function levelTileKey(tileX: number, tileZ: number, level: number): string {
+  return `${level}:${tileX},${tileZ}`;
+}
+
 export function createWorld(source: WorldSource): World {
   const built = (source.buildings ?? []).map(expandBuilding);
+
+  const rooms: Room[] = [];
+  const roomByTile = new Map<string, Room>();
+
+  for (const building of built) {
+    for (const placed of building.rooms) {
+      const room: Room = { id: rooms.length, name: placed.name, level: placed.level };
+      rooms.push(room);
+      for (const [tileX, tileZ] of placed.tiles) {
+        roomByTile.set(levelTileKey(tileX, tileZ, placed.level), room);
+      }
+    }
+  }
+
   const staircases: Staircase[] = [];
   const stairsByTile = new Map<string, Staircase>();
 
@@ -170,6 +208,12 @@ export function createWorld(source: WorldSource): World {
     climbProgress(flight: Staircase, x: number, z: number): number {
       const along = flight.axis === 'z' ? z : x;
       return (along - flight.bottomEdge) / (flight.topEdge - flight.bottomEdge);
+    },
+
+    rooms,
+
+    roomAt(tileX: number, tileZ: number, level: number): Room | null {
+      return roomByTile.get(levelTileKey(tileX, tileZ, level)) ?? null;
     },
   };
 }

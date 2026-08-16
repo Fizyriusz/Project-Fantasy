@@ -1,4 +1,4 @@
-import { WORLD_DATA } from '@fantasy/shared';
+import { TEST_WORLD, WORLD_DATA } from '@fantasy/shared';
 import { Color, Scene, WebGLRenderer } from 'three';
 
 import { listenForCameraRotation } from './input/cameraRotation';
@@ -66,6 +66,17 @@ let connected = false;
 let latestTick = 0;
 let playerLevel = WORLD_DATA.player.startLevel;
 let playerClimb = 0;
+let playerRoom: number | null = null;
+
+/** The name of the space the character is in, as the caption should read it. */
+function whereYouAre(): string {
+  if (playerRoom === null) {
+    return 'na zewnątrz';
+  }
+  // Only the id travels; the client already holds the world, so it can look the
+  // name up itself rather than being told it twenty times a second.
+  return TEST_WORLD.rooms[playerRoom].name;
+}
 
 /** How far up a flight the floor above starts being drawn. */
 const HALFWAY_UP = 0.5;
@@ -75,7 +86,8 @@ function showConnectionStatus(): void {
   // The zoom rides along because it is the one tuned value the panel cannot
   // show — the wheel owns it, not a slider.
   status.textContent = connected
-    ? `sim: połączony · tick ${latestTick} · zoom ${Math.round(view.viewHeightMetres)} m`
+    ? `sim: połączony · tick ${latestTick} · zoom ${Math.round(view.viewHeightMetres)} m` +
+      ` · jesteś w: ${whereYouAre()}`
     : 'sim: brak połączenia';
 }
 
@@ -99,6 +111,7 @@ const simulation = connectToSimulation((message) => {
         playerClimb = message.player.climb;
         levels.showUpTo(playerClimb >= HALFWAY_UP ? playerLevel + 1 : playerLevel);
       }
+      playerRoom = message.player.room;
       break;
     case 'doorChanged':
       for (const doors of levels.doors) {

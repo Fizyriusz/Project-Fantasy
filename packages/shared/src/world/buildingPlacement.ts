@@ -27,7 +27,15 @@ export interface PlacedStairs {
   readonly between: readonly [number, number];
 }
 
+export interface PlacedRoom {
+  readonly name: string;
+  readonly level: number;
+  /** Every tile the room covers, in world coordinates. */
+  readonly tiles: readonly (readonly [number, number])[];
+}
+
 export interface ExpandedBuilding {
+  readonly rooms: readonly PlacedRoom[];
   readonly floors: readonly PlacedFloor[];
   readonly walls: readonly PlacedEdge[];
   /** Applied after the walls, so a doorway wins over the wall it interrupts. */
@@ -118,6 +126,7 @@ export function expandBuilding(placement: BuildingPlacement): ExpandedBuilding {
   const turns = (((placement.quarterTurns ?? 0) % 4) + 4) % 4;
   const [offsetX, offsetZ] = placement.at;
 
+  const rooms: PlacedRoom[] = [];
   const floors: PlacedFloor[] = [];
   const walls: PlacedEdge[] = [];
   const openings: PlacedEdge[] = [];
@@ -179,9 +188,13 @@ export function expandBuilding(placement: BuildingPlacement): ExpandedBuilding {
     const [fromX, fromZ] = room.from;
     const [toX, toZ] = room.to;
 
+    const covered: (readonly [number, number])[] = [];
+
     for (let z = fromZ; z <= toZ; z += 1) {
       for (let x = fromX; x <= toX; x += 1) {
         placeFloor(level, x, z, room.floor);
+        const [worldX, worldZ] = rotateTile(x, z, turns, footprint);
+        covered.push([worldX + offsetX, worldZ + offsetZ]);
       }
       wallBetween(level, fromX, z, 'west', fromX - 1, z);
       wallBetween(level, toX + 1, z, 'west', toX + 1, z);
@@ -191,6 +204,8 @@ export function expandBuilding(placement: BuildingPlacement): ExpandedBuilding {
       wallBetween(level, x, fromZ, 'north', x, fromZ - 1);
       wallBetween(level, x, toZ + 1, 'north', x, toZ + 1);
     }
+
+    rooms.push({ name: room.name, level, tiles: covered });
   }
 
   for (const opening of template.openings) {
@@ -216,5 +231,5 @@ export function expandBuilding(placement: BuildingPlacement): ExpandedBuilding {
     });
   }
 
-  return { floors, walls, openings, stairs };
+  return { rooms, floors, walls, openings, stairs };
 }

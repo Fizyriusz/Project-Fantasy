@@ -203,10 +203,22 @@ export function createSimulation(): Simulation {
     }
   }
 
+  /**
+   * The named space the character occupies, if any.
+   *
+   * Read from the floor they belong to, which on the stairs is the lower one —
+   * so a climber stays in the stairwell until they step off at the top, rather
+   * than flickering between two rooms halfway up.
+   */
+  function currentRoom(): number | null {
+    const room = TEST_WORLD.roomAt(Math.floor(player.x), Math.floor(player.z), player.level);
+    return room?.id ?? null;
+  }
+
   function snapshotPlayer(): PlayerSnapshot {
     // Copied, never handed out directly, so a later tick cannot rewrite a
     // snapshot the client already believes in.
-    return { x: player.x, z: player.z, level: player.level, climb };
+    return { x: player.x, z: player.z, level: player.level, climb, room: currentRoom() };
   }
 
   return {

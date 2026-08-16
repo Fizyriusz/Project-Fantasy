@@ -30,6 +30,15 @@ export interface PlayerSnapshot {
    * character — the simulation never asks a fraction of a floor anything.
    */
   readonly climb: number;
+  /**
+   * Which named space the character stands in, as an index into `World.rooms`.
+   * Null outdoors.
+   *
+   * The id travels rather than the name, because the room will soon need to be
+   * compared and looked up — which building it belongs to, what to hide, who
+   * else is inside — and a name is neither unique nor cheap to compare.
+   */
+  readonly room: number | null;
 }
 
 /**
