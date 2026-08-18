@@ -58,3 +58,44 @@ odrzucony, bo dawał niewidzialne ściany i niewidoczne przejścia.
 
 **Kiedy wrócić:** najpóźniej po Etapie 2 (pierwszy mob) i po Etapie 3
 (ekwipunek, przedmioty na podłodze). Wcześniej nie ma czego testować.
+
+---
+
+## Noc jest jaśniejsza, niż powinna
+
+**Data:** 2026-08-18
+**Faza:** Faza I, Etap 1 („Świat") — krok 10 z 10, czyli koniec etapu. Nadal
+jeden testowy dom, bez przedmiotów, mebli i mobów. **Nie ma latarki ani
+żadnego innego światła, które gracz mógłby nieść** — pierwsze takie źródło
+przewiduje `06-roadmapa.md` dopiero w Etapie 3.
+
+**Czego dotyczy:** noc świeci mocniej, niż powinna. Trawa o 02:00 ma około 40%
+jasności południowej i wyraźnie niebieski odcień. Prawdziwa noc byłaby dużo
+ciemniejsza.
+
+**Dlaczego na razie OK:** przy obecnej zawartości gry uczciwa noc znaczy kilka
+minut na godzinę, przez które nie da się grać w ogóle — nie ma czym poświecić.
+Kolor robi tu robotę, której nie może zrobić ciemność: niebieski odcień mówi
+„noc", a jasność zostaje na poziomie pozwalającym chodzić.
+
+**Osobna sprawa:** wewnątrz budynku jest **dokładnie tak samo jasno jak na
+zewnątrz**, bo światło rozproszone jest jedno na cały świat. To będzie wyglądać
+źle w dzień (wnętrze powinno być ciemniejsze) i bezsensownie w nocy.
+
+**Co obserwować:**
+
+- **Gdy pojawi się latarka** (Etap 3) — o ile da się przyciemnić noc, żeby
+  latarka miała sens, a gra nadal dała się prowadzić. To jest właściwy moment
+  na przepisanie tabeli w `packages/client/src/render/daylight.ts`.
+- **Wnętrza kontra dwór** — czy wystarczy przyciemnić pomieszczenia bez okien,
+  czy trzeba prawdziwego światła wpadającego przez okna. To drugie jest dużo
+  droższe.
+- **Widoczność mobów w nocy.** `03-swiat-i-mobki.md` mówi, że „światło w nocy
+  jest widoczne z dużej odległości i to ma być realny problem" — przy jasnej
+  nocy ta zasada nie ma jak zadziałać.
+- **Długość doby.** Ustalona na 60 realnych minut, zgodnie z decyzją autora dla
+  wersji wypuszczanej do szerszych testów. Do sprawdzenia, czy w codziennej
+  pracy nad grą nie jest to męczące — od tego jest suwak.
+
+**Kiedy wrócić:** przy Etapie 3, razem z pierwszym przenośnym źródłem światła.
+Wcześniej nie ma czym tego zastąpić.
