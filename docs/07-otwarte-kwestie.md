@@ -66,6 +66,15 @@ Wszystkie do pliku konfiguracyjnego, nie do kodu.
 - **Transport sieciowy** — WebSocket na start; geckos.io (WebRTC/UDP) tylko jeśli
   testy pokażą, że TCP nie wystarcza.
 - **Silnik dźwięku** — Web Audio bezpośrednio czy biblioteka.
+- **Czy gracz widzi to, czego nie widzi jego postać** — dziś nie ma żadnego
+  systemu widoczności: rysujemy wszystko, co stoi na rysowanej kondygnacji.
+  Prawdziwy wymaga dwóch osobnych rzeczy: linii wzroku ze ścianami blokującymi
+  widok (kolumna `blocksSight` w danych krawędzi istnieje i czeka nieużywana)
+  oraz przyciemnienia albo ukrycia tego, czego postać nie widzi.
+  Uwaga: `03-swiat-i-mobki.md` opisuje wzrok **mobów**, a to jest osobne
+  pytanie — o wzrok gracza. Nie do rozstrzygnięcia, dopóki nie ma walki, którą
+  da się przegrać: mgła wojny zmieni próg liczebności z Etapu 2, więc najpierw
+  ten próg trzeba poznać bez niej.
 
 ---
 

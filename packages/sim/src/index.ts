@@ -1,8 +1,10 @@
 import {
+  MOB_SPAWNS,
   TEST_WORLD,
   TICK_RATE_HZ,
   WORLD_DATA,
   type ClientToSimMessage,
+  type MobSnapshot,
   type PlayerSnapshot,
   type SimToClientMessage,
   type Staircase,
@@ -166,6 +168,36 @@ export function createSimulation(): Simulation {
 
   // Kept as plain numbers rather than the message object, so no state of ours
   // can ever alias something that arrived from outside.
+  /**
+   * The mutated, as the simulation holds them.
+   *
+   * Mutable objects in an array rather than one array per property: a mob is a
+   * thing with a state, and the moment it starts walking, seeing and hitting,
+   * every one of those needs to be read together.
+   *
+   * They stand still for now. Nothing here decides how they behave — that is
+   * the next step; this one is about their being in the world at all.
+   */
+  const mobs = MOB_SPAWNS.map((spawn, index) => ({
+    id: index,
+    type: spawn.type,
+    x: spawn.x,
+    z: spawn.z,
+    level: spawn.level,
+  }));
+
+  function snapshotMobs(): readonly MobSnapshot[] {
+    // Copied, for the same reason the character's position is copied: nothing
+    // outside may hold a reference to what the simulation is still changing.
+    return mobs.map((mob) => ({
+      id: mob.id,
+      type: mob.type,
+      x: mob.x,
+      z: mob.z,
+      level: mob.level,
+    }));
+  }
+
   let intentX = 0;
   let intentZ = 0;
   let intentSprinting = false;
@@ -302,7 +334,13 @@ export function createSimulation(): Simulation {
       advanceClock();
       walk();
       return [
-        { type: 'snapshot', tick: currentTick, timeOfDay, player: snapshotPlayer() },
+        {
+          type: 'snapshot',
+          tick: currentTick,
+          timeOfDay,
+          player: snapshotPlayer(),
+          mobs: snapshotMobs(),
+        },
       ];
     },
   };

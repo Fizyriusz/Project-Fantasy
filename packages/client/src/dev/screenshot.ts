@@ -69,6 +69,10 @@ export function installScreenshotTool(parts: ScreenshotParts): void {
     view.setRotationDuration(0);
     view.setFollowHalfLife(0);
 
+    // Before anything is asked for, so a requested target overrides the follow
+    // rather than the other way round.
+    settle();
+
     for (let turn = 0; turn < turns; turn += 1) {
       view.rotate(1, now);
     }
@@ -84,7 +88,6 @@ export function installScreenshotTool(parts: ScreenshotParts): void {
     character.visible = !(request.hideCharacter ?? false);
 
     view.update(now);
-    settle();
     renderer.render(scene, view.camera);
     // Read in the same breath as the render. The drawing buffer is not kept
     // between frames, so anything awaited first would photograph nothing.

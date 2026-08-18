@@ -8,6 +8,7 @@ import { listenForInteract } from './input/interact';
 import { listenForMovementIntent, type MovementRequest } from './input/movementIntent';
 import { createIsometricView } from './render/isometricCamera';
 import { createLevels, LEVEL_HEIGHT_METRES } from './render/levels';
+import { createMobs } from './render/mobs';
 import { createDaylight } from './render/daylight';
 import { createCharacterStandIn } from './render/placeholderWorld';
 import { createPositionInterpolator } from './render/positionInterpolator';
@@ -44,7 +45,8 @@ const scene = new Scene();
 const daylight = createDaylight(scene);
 const levels = createLevels();
 const roofs = createRoofs();
-scene.add(levels.group, roofs.group);
+const mobs = createMobs();
+scene.add(levels.group, roofs.group, mobs.group);
 scene.add(character);
 scene.add(daylight.group);
 
@@ -114,7 +116,7 @@ function updateVisibility(): void {
   const towardsCamera = view.toWorldDirection({ forward: -1, right: 0 });
   levels.showThrough(playerRoom, towardsCamera);
 
-  levels.showUpTo(
+  const highestDrawnStorey =
     building === null
       ? ALL_STOREYS
       : // The floor above appears once the climb is committed rather than at
@@ -122,8 +124,10 @@ function updateVisibility(): void {
         // having the ceiling vanish under you at that point reads as a glitch.
         playerClimb >= HALFWAY_UP
         ? playerLevel + 1
-        : playerLevel,
-  );
+        : playerLevel;
+
+  levels.showUpTo(highestDrawnStorey);
+  mobs.showUpTo(highestDrawnStorey);
   roofs.showAllExcept(building);
 }
 
@@ -155,6 +159,7 @@ const simulation = connectToSimulation((message) => {
       // clock is the simulation's, and a second copy of it in the client would
       // be a second opinion about what time it is.
       daylight.setTimeOfDay(timeOfDay);
+      mobs.show(message.mobs);
       // The client draws what it is told and decides nothing about where the
       // character is. It only chooses how to fill the gaps between snapshots.
       playerPosition.push(message.tick, message.player);
@@ -276,8 +281,8 @@ if (import.meta.env.DEV) {
       applyTuning(activeTuning);
     },
     settle: () => {
-      // Far longer than any drop takes, so everything lands on its target.
-      levels.update(10_000);
+      // Far longer than any animation takes, so everything lands on its target.
+      bringUpToDate(performance.now(), 10_000);
     },
   });
 
@@ -298,21 +303,35 @@ if (import.meta.env.DEV) {
 // be. Nothing in the simulation depends on it: this is drawing only.
 let lastFrameMs: number | null = null;
 
-renderer.setAnimationLoop(() => {
-  const now = performance.now();
-  levels.update(lastFrameMs === null ? 0 : now - lastFrameMs);
-  lastFrameMs = now;
+/**
+ * Brings everything the drawing owns up to the given moment.
+ *
+ * Separate from the loop that calls it because the screenshot tool needs the
+ * same work done on demand: a browser stops calling the draw loop in a
+ * background tab, and without this a picture taken there showed the character
+ * wherever it had last been left rather than where it is.
+ */
+function bringUpToDate(now: number, elapsedMs: number): void {
+  levels.update(elapsedMs);
 
   const position = playerPosition.sample(now);
-  if (position !== null) {
-    const floorY = climbHeight(playerLevel, playerClimb, LEVEL_HEIGHT_METRES);
-    // How high the model stands on its floor is the model's business; which
-    // floor it stands on is the simulation's.
-    character.position.set(position.x, floorY + CHARACTER_LIFT_METRES, position.z);
-    // Follows the drawn position rather than the raw snapshot, or the camera
-    // would judder twenty times a second while the character glides.
-    view.setTarget(position.x, floorY, position.z);
+  if (position === null) {
+    return;
   }
+
+  const floorY = climbHeight(playerLevel, playerClimb, LEVEL_HEIGHT_METRES);
+  // How high the model stands on its floor is the model's business; which
+  // floor it stands on is the simulation's.
+  character.position.set(position.x, floorY + CHARACTER_LIFT_METRES, position.z);
+  // Follows the drawn position rather than the raw snapshot, or the camera
+  // would judder twenty times a second while the character glides.
+  view.setTarget(position.x, floorY, position.z);
+}
+
+renderer.setAnimationLoop(() => {
+  const now = performance.now();
+  bringUpToDate(now, lastFrameMs === null ? 0 : now - lastFrameMs);
+  lastFrameMs = now;
 
   view.update(now);
 

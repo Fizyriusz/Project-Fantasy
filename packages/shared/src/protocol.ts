@@ -7,6 +7,8 @@
  * every place that handles them fail to compile until it is handled.
  */
 
+import type { MobId } from './data/mobs';
+
 /**
  * A point on the ground plane. The world is flat in XZ and floors become
  * discrete levels later, so height is never part of a position.
@@ -39,6 +41,22 @@ export interface PlayerSnapshot {
    * else is inside — and a name is neither unique nor cheap to compare.
    */
   readonly room: number | null;
+}
+
+/**
+ * One of the mutated, as the client needs to draw it.
+ *
+ * Carries which kind it is rather than what it looks like: the drawing reads
+ * the table in shared/data/mobs.ts for that, the same way it reads the tables
+ * for floors and walls.
+ */
+export interface MobSnapshot {
+  /** Stable for the life of the mob, so the client can keep track of which is which. */
+  readonly id: number;
+  readonly type: MobId;
+  readonly x: number;
+  readonly z: number;
+  readonly level: number;
 }
 
 /**
@@ -144,4 +162,5 @@ export type SimToClientMessage =
        */
       readonly timeOfDay: number;
       readonly player: PlayerSnapshot;
+      readonly mobs: readonly MobSnapshot[];
     };

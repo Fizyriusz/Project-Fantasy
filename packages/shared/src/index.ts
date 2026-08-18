@@ -8,6 +8,7 @@ export * from './world/buildingTemplate';
 export * from './world/buildingPlacement';
 export * from './world/world';
 export * from './data/buildings';
+export * from './data/mobs';
 
 /**
  * Fixed simulation tick rate. See docs/02-architektura.md — logic never depends
