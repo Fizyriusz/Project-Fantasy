@@ -26,6 +26,12 @@ export interface Mobs {
    * upstairs does not hang in the air over the room below.
    */
   showUpTo(level: number): void;
+
+  /**
+   * How big to draw them. Applied by scaling rather than by rebuilding, so a
+   * slider moves what is already on screen instead of only what comes next.
+   */
+  setSize(heightMetres: number, radiusMetres: number): void;
 }
 
 export function createMobs(): Mobs {
@@ -33,6 +39,13 @@ export function createMobs(): Mobs {
   const drawn = new Map<number, Mesh>();
   const materials = new Map<string, MeshLambertMaterial>();
   let shownUpTo = Number.POSITIVE_INFINITY;
+  let heightMetres = MOB_TYPES.t0.heightMetres;
+  let radiusMetres = MOB_TYPES.t0.radiusMetres;
+
+  // One unit cube, scaled per mob. Building a box of the right size instead
+  // would mean throwing the geometry away and making another every time a
+  // slider moves.
+  const unitCube = new BoxGeometry(1, 1, 1);
 
   function shapeFor(mob: MobSnapshot): Mesh {
     const found = drawn.get(mob.id);
@@ -40,23 +53,40 @@ export function createMobs(): Mobs {
       return found;
     }
 
-    const type = MOB_TYPES[mob.type];
     let material = materials.get(mob.type);
     if (material === undefined) {
       material = new MeshLambertMaterial({ color: MOB_COLOURS[mob.type] });
       materials.set(mob.type, material);
     }
 
-    // Footprint taken from the collision radius, as the character's is, so the
-    // shape visibly touches what it bumps into.
-    const footprint = type.radiusMetres * 2;
-    const shape = new Mesh(
-      new BoxGeometry(footprint, type.heightMetres, footprint),
-      material,
-    );
+    const shape = new Mesh(unitCube, material);
     drawn.set(mob.id, shape);
     group.add(shape);
     return shape;
+  }
+
+  function place(shape: Mesh, mob: MobSnapshot): void {
+    // Footprint taken from the collision radius, as the character's is, so the
+    // shape visibly touches what it bumps into.
+    const footprint = radiusMetres * 2;
+    shape.scale.set(footprint, heightMetres, footprint);
+    // Half its height up, because a box is centred on its own middle and the
+    // simulation only ever says where the feet are.
+    shape.position.set(mob.x, mob.level * LEVEL_HEIGHT_METRES + heightMetres / 2, mob.z);
+    shape.visible = mob.level <= shownUpTo;
+  }
+
+  // The last thing each mob was said to be doing, so a slider can move what is
+  // already drawn without waiting for the next snapshot.
+  const standing = new Map<number, MobSnapshot>();
+
+  function redraw(): void {
+    for (const [id, shape] of drawn) {
+      const mob = standing.get(id);
+      if (mob !== undefined) {
+        place(shape, mob);
+      }
+    }
   }
 
   return {
@@ -67,15 +97,8 @@ export function createMobs(): Mobs {
 
       for (const mob of mobs) {
         present.add(mob.id);
-        const shape = shapeFor(mob);
-        // Half its height up, because a box is centred on its own middle and
-        // the simulation only ever says where the feet are.
-        shape.position.set(
-          mob.x,
-          mob.level * LEVEL_HEIGHT_METRES + MOB_TYPES[mob.type].heightMetres / 2,
-          mob.z,
-        );
-        shape.visible = mob.level <= shownUpTo;
+        place(shapeFor(mob), mob);
+        standing.set(mob.id, mob);
       }
 
       for (const [id, shape] of drawn) {
@@ -83,13 +106,20 @@ export function createMobs(): Mobs {
           continue;
         }
         group.remove(shape);
-        shape.geometry.dispose();
         drawn.delete(id);
+        standing.delete(id);
       }
     },
 
     showUpTo(level: number): void {
       shownUpTo = level;
+      redraw();
+    },
+
+    setSize(height: number, radius: number): void {
+      heightMetres = height;
+      radiusMetres = radius;
+      redraw();
     },
   };
 }

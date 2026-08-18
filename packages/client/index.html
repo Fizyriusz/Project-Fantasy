@@ -66,6 +66,30 @@
         display: none;
       }
 
+      .tuning-group + .tuning-group {
+        border-top: 1px solid #2b312a;
+      }
+
+      .tuning-group-heading {
+        padding: 6px 0 4px;
+        color: #b3bdaf;
+        cursor: pointer;
+        user-select: none;
+      }
+
+      .tuning-group-heading::before {
+        content: '▾ ';
+        color: #6f7a6c;
+      }
+
+      .tuning-group.tuning-shut .tuning-group-heading::before {
+        content: '▸ ';
+      }
+
+      .tuning-group.tuning-shut .tuning-group-body {
+        display: none;
+      }
+
       .tuning-row {
         display: block;
         padding-top: 7px;

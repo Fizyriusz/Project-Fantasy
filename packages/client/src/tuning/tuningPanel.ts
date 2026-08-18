@@ -1,7 +1,9 @@
 import {
   DEFAULT_TUNING,
+  GROUPS,
   SLIDERS,
   TOGGLES,
+  type TuningGroup,
   type TuningToggleKey,
   type TuningValues,
 } from './tuningValues';
@@ -65,6 +67,38 @@ export function createTuningPanel(
 
   const body = element('div', 'tuning-body');
 
+  /**
+   * One drawer per group, opened by clicking its heading.
+   *
+   * All shut to begin with. With five groups open at once the panel is longer
+   * than the window, and the point of it is to be glanceable while walking
+   * about, not to be scrolled.
+   */
+  const drawers = new Map<TuningGroup, HTMLElement>();
+
+  for (const group of GROUPS) {
+    const drawer = element('div', 'tuning-group tuning-shut');
+    const heading = element('div', 'tuning-group-heading');
+    heading.textContent = group.label;
+    const contents = element('div', 'tuning-group-body');
+
+    heading.addEventListener('click', () => {
+      drawer.classList.toggle('tuning-shut');
+    });
+
+    drawer.append(heading, contents);
+    body.append(drawer);
+    drawers.set(group.key, contents);
+  }
+
+  function drawerFor(group: TuningGroup): HTMLElement {
+    const found = drawers.get(group);
+    if (found === undefined) {
+      throw new Error(`Tuning group '${group}' has no drawer`);
+    }
+    return found;
+  }
+
   for (const definition of SLIDERS) {
     const row = element('label', 'tuning-row');
 
@@ -97,7 +131,7 @@ export function createTuningPanel(
 
     rows.push(refresh);
     row.append(caption, input, readout);
-    body.append(row);
+    drawerFor(definition.group).append(row);
   }
 
   const checkboxes: HTMLInputElement[] = [];
@@ -131,7 +165,7 @@ export function createTuningPanel(
 
     rows.push(refresh);
     row.append(caption, input, readout);
-    body.append(row);
+    drawerFor(definition.group).append(row);
   }
 
   // Collapsed out of the way for judging feel, because a panel in the corner

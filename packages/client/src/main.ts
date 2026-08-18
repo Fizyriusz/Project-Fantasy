@@ -260,6 +260,7 @@ function applyTuning(values: TuningValues): void {
   );
   view.setRotationDuration(values.cameraRotationDurationMs);
   levels.setStubHeight(values.wallStubHeightMetres);
+  mobs.setSize(values.mobHeightMetres, values.mobRadiusMetres);
   view.setFollowHalfLife(values.cameraFollowHalfLifeMs);
   showConnectionStatus();
   playerPosition.setEnabled(values.interpolation);
