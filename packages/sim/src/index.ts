@@ -45,6 +45,33 @@ export function createSimulation(): Simulation {
 
   let currentTick = 0;
 
+  // The world's own clock, from 0 at midnight to 1 at the next one.
+  //
+  // Advanced by a fixed share of a day per tick rather than by elapsed time
+  // (docs/02-architektura.md): a tick is a tick, so the same run of ticks makes
+  // the same day whatever the machine is doing. Held as a position in the day
+  // rather than counted from the start, so changing how long a day lasts
+  // changes the rate from now on and does not jump the clock.
+  let timeOfDay = (WORLD_DATA.time.startHour / 24) % 1;
+  let realMinutesPerDay = WORLD_DATA.time.realMinutesPerDay;
+  let clockFrozen = false;
+
+  // The hour the panel last asked for. Setting the clock has to be an act, not
+  // a standing instruction: the panel resends every value whenever any one of
+  // them moves, so a clock that obeyed the hour it was sent would be pinned
+  // there forever and never run at all. Undefined until the first message, so
+  // the world starts at the hour the data file says and not at wherever the
+  // slider was left.
+  let hourLastAskedFor: number | undefined;
+
+  function advanceClock(): void {
+    if (clockFrozen) {
+      return;
+    }
+    const ticksPerDay = realMinutesPerDay * 60 * TICK_RATE_HZ;
+    timeOfDay = (timeOfDay + 1 / ticksPerDay) % 1;
+  }
+
   // Mutable on purpose: this is the authoritative position, and nothing outside
   // the simulation is allowed to hold a reference to it.
   const player = {
@@ -250,6 +277,15 @@ export function createSimulation(): Simulation {
           return [{ type: 'doorChanged', door, open }];
         }
         case 'tune':
+          realMinutesPerDay = message.world.realMinutesPerDay;
+          clockFrozen = message.world.frozen;
+          if (
+            hourLastAskedFor !== undefined &&
+            message.world.timeOfDayHours !== hourLastAskedFor
+          ) {
+            timeOfDay = (message.world.timeOfDayHours / 24) % 1;
+          }
+          hourLastAskedFor = message.world.timeOfDayHours;
           walkSpeedMetresPerSecond = message.player.walkSpeedMetresPerSecond;
           sprintSpeedMetresPerSecond = message.player.sprintSpeedMetresPerSecond;
           accelerationMetresPerSecondSquared =
@@ -263,8 +299,11 @@ export function createSimulation(): Simulation {
 
     tick(): readonly SimToClientMessage[] {
       currentTick += 1;
+      advanceClock();
       walk();
-      return [{ type: 'snapshot', tick: currentTick, player: snapshotPlayer() }];
+      return [
+        { type: 'snapshot', tick: currentTick, timeOfDay, player: snapshotPlayer() },
+      ];
     },
   };
 }

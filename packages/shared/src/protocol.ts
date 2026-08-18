@@ -69,6 +69,28 @@ export interface PlayerTuning {
   readonly radiusMetres: number;
 }
 
+/**
+ * Values the tuning panel is allowed to change about the world itself, as
+ * opposed to about the character.
+ */
+export interface WorldTuning {
+  readonly realMinutesPerDay: number;
+  /**
+   * An hour to move the clock to, from midnight.
+   *
+   * Acted on when it changes, not while it stands still — otherwise the clock
+   * would be held at it and never run. Moving it works whether or not the
+   * clock is stopped; the two controls are about different things.
+   */
+  readonly timeOfDayHours: number;
+  /**
+   * Stops the clock where it stands, so an hour can be looked at for as long
+   * as it takes. A development affordance and nothing else — the world has no
+   * reason to hold still.
+   */
+  readonly frozen: boolean;
+}
+
 /** Names one boundary in the world, for talking about a particular door. */
 export interface EdgeRef {
   readonly tileX: number;
@@ -96,7 +118,7 @@ export type ClientToSimMessage =
        */
       readonly sprinting: boolean;
     }
-  | { readonly type: 'tune'; readonly player: PlayerTuning };
+  | { readonly type: 'tune'; readonly player: PlayerTuning; readonly world: WorldTuning };
 
 /** Simulation answers with snapshots and events. */
 export type SimToClientMessage =
@@ -110,5 +132,16 @@ export type SimToClientMessage =
   | {
       readonly type: 'snapshot';
       readonly tick: number;
+      /**
+       * How far through the day the world is, from 0 at midnight to 1 at the
+       * next midnight. Belongs to the world rather than to the character, so
+       * it sits beside the player rather than inside it.
+       *
+       * The simulation owns the clock, not the drawing. Night is about to mean
+       * something to more than the lighting — what a mob can see and hear
+       * (docs/03), food going off, the power failing (docs/05) — and none of
+       * that can hang off a value the renderer made up.
+       */
+      readonly timeOfDay: number;
       readonly player: PlayerSnapshot;
     };

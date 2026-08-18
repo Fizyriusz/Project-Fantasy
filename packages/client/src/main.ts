@@ -1,5 +1,5 @@
 import { TEST_WORLD, WORLD_DATA } from '@fantasy/shared';
-import { Color, Scene, WebGLRenderer } from 'three';
+import { Scene, WebGLRenderer } from 'three';
 
 import { installScreenshotTool } from './dev/screenshot';
 import { listenForCameraRotation } from './input/cameraRotation';
@@ -8,7 +8,8 @@ import { listenForInteract } from './input/interact';
 import { listenForMovementIntent, type MovementRequest } from './input/movementIntent';
 import { createIsometricView } from './render/isometricCamera';
 import { createLevels, LEVEL_HEIGHT_METRES } from './render/levels';
-import { createCharacterStandIn, createTemporaryLighting } from './render/placeholderWorld';
+import { createDaylight } from './render/daylight';
+import { createCharacterStandIn } from './render/placeholderWorld';
 import { createPositionInterpolator } from './render/positionInterpolator';
 import { createRoofs } from './render/roofs';
 import { climbHeight } from './render/stairs';
@@ -40,12 +41,12 @@ const character = createCharacterStandIn();
 const CHARACTER_LIFT_METRES = character.position.y;
 
 const scene = new Scene();
-scene.background = new Color(0x1b1f1d);
+const daylight = createDaylight(scene);
 const levels = createLevels();
 const roofs = createRoofs();
 scene.add(levels.group, roofs.group);
 scene.add(character);
-scene.add(createTemporaryLighting());
+scene.add(daylight.group);
 
 const view = createIsometricView(window.innerWidth / window.innerHeight);
 
@@ -67,6 +68,15 @@ let latestTick = 0;
 let playerLevel = WORLD_DATA.player.startLevel;
 let playerClimb = 0;
 let playerRoom: number | null = null;
+let timeOfDay = WORLD_DATA.time.startHour / 24;
+
+/** The world clock as a person reads it. */
+function clockReading(): string {
+  const minutesIntoDay = Math.floor(timeOfDay * 24 * 60);
+  const hours = Math.floor(minutesIntoDay / 60);
+  const minutes = minutesIntoDay % 60;
+  return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
+}
 
 /** The name of the space the character is in, as the caption should read it. */
 function whereYouAre(): string {
@@ -127,7 +137,7 @@ function showConnectionStatus(): void {
   // show — the wheel owns it, not a slider.
   status.textContent = connected
     ? `sim: połączony · tick ${latestTick} · zoom ${Math.round(view.viewHeightMetres)} m` +
-      ` · jesteś w: ${whereYouAre()}`
+      ` · godz. ${clockReading()} · jesteś w: ${whereYouAre()}`
     : 'sim: brak połączenia';
 }
 
@@ -140,6 +150,11 @@ const simulation = connectToSimulation((message) => {
       break;
     case 'snapshot':
       latestTick = message.tick;
+      timeOfDay = message.timeOfDay;
+      // Drawn straight from the snapshot rather than run forward here: the
+      // clock is the simulation's, and a second copy of it in the client would
+      // be a second opinion about what time it is.
+      daylight.setTimeOfDay(timeOfDay);
       // The client draws what it is told and decides nothing about where the
       // character is. It only chooses how to fill the gaps between snapshots.
       playerPosition.push(message.tick, message.player);
@@ -225,6 +240,11 @@ function applyTuning(values: TuningValues): void {
       accelerationMetresPerSecondSquared: values.accelerationMetresPerSecondSquared,
       decelerationMetresPerSecondSquared: values.decelerationMetresPerSecondSquared,
       radiusMetres: values.playerRadiusMetres,
+    },
+    world: {
+      realMinutesPerDay: values.realMinutesPerDay,
+      timeOfDayHours: values.timeOfDayHours,
+      frozen: values.frozenTime,
     },
   });
 

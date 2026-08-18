@@ -1,13 +1,5 @@
 import { WORLD_DATA, type TileMap } from '@fantasy/shared';
-import {
-  AmbientLight,
-  BoxGeometry,
-  DirectionalLight,
-  GridHelper,
-  Group,
-  Mesh,
-  MeshLambertMaterial,
-} from 'three';
+import { BoxGeometry, GridHelper, Mesh, MeshLambertMaterial } from 'three';
 
 const CHARACTER_HEIGHT_METRES = 1.8;
 
@@ -51,17 +43,3 @@ export function createCharacterStandIn(): Mesh {
   return box;
 }
 
-/**
- * Bare minimum lighting so solid shapes read as solid. The real day/night
- * lighting is Etap 1 — this is only here to make krok 1 checkable by eye.
- */
-export function createTemporaryLighting(): Group {
-  const lighting = new Group();
-  lighting.add(new AmbientLight(0xffffff, 1.5));
-
-  const sun = new DirectionalLight(0xffffff, 2.5);
-  sun.position.set(-8, 20, 6);
-  lighting.add(sun);
-
-  return lighting;
-}

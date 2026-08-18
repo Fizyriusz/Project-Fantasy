@@ -41,8 +41,23 @@ export interface PlayerData {
   readonly radiusMetres: number;
 }
 
+/**
+ * How fast the world's own clock runs, and where it starts.
+ *
+ * docs/07-otwarte-kwestie.md had "ile realnych minut to doba?" as an open
+ * question. The answer the author gave, for the build that eventually goes out
+ * for wider testing, is one real hour — so that is what stands here, with a
+ * slider to argue with it in the meantime.
+ */
+export interface TimeData {
+  readonly realMinutesPerDay: number;
+  /** What the clock reads when a world starts, in hours from midnight. */
+  readonly startHour: number;
+}
+
 export interface WorldData {
   readonly player: PlayerData;
+  readonly time: TimeData;
 }
 
 export const WORLD_DATA: WorldData = {
@@ -57,5 +72,12 @@ export const WORLD_DATA: WorldData = {
     accelerationMetresPerSecondSquared: 25,
     decelerationMetresPerSecondSquared: 30,
     radiusMetres: 0.35,
+  },
+
+  time: {
+    realMinutesPerDay: 60,
+    // Mid-morning: the character starts in daylight, and a first night is a
+    // few minutes of play away rather than immediate.
+    startHour: 8,
   },
 };

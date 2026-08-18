@@ -21,8 +21,11 @@ export interface TuningValues {
   cameraFollowHalfLifeMs: number;
   cameraRotationDurationMs: number;
   wallStubHeightMetres: number;
+  realMinutesPerDay: number;
+  timeOfDayHours: number;
   interpolation: boolean;
   debugGrid: boolean;
+  frozenTime: boolean;
 }
 
 export type TuningToggleKey = {
@@ -41,6 +44,7 @@ export interface ToggleDefinition {
 export const TOGGLES: readonly ToggleDefinition[] = [
   { key: 'interpolation', label: 'Interpolacja', whenOn: 'włączona', whenOff: 'wyłączona' },
   { key: 'debugGrid', label: 'Siatka pomocnicza', whenOn: 'widoczna', whenOff: 'ukryta' },
+  { key: 'frozenTime', label: 'Zegar świata', whenOn: 'zatrzymany', whenOff: 'chodzi' },
 ];
 
 export interface SliderDefinition {
@@ -68,11 +72,33 @@ export const DEFAULT_TUNING: TuningValues = {
   cameraFollowHalfLifeMs: DEFAULT_FOLLOW_HALF_LIFE_MS,
   cameraRotationDurationMs: DEFAULT_ROTATION_DURATION_MS,
   wallStubHeightMetres: DEFAULT_STUB_HEIGHT_METRES,
+  realMinutesPerDay: WORLD_DATA.time.realMinutesPerDay,
+  timeOfDayHours: WORLD_DATA.time.startHour,
   interpolation: true,
   debugGrid: true,
+  frozenTime: false,
 };
 
 export const SLIDERS: readonly SliderDefinition[] = [
+  {
+    key: 'realMinutesPerDay',
+    label: 'Długość doby',
+    unit: 'realnych minut',
+    min: 1,
+    max: 120,
+    step: 1,
+  },
+  {
+    // Acted on when it moves, not while it sits still: the panel resends every
+    // value on every change, so a clock that obeyed this one continuously
+    // would never advance.
+    key: 'timeOfDayHours',
+    label: 'Przestaw zegar na godzinę',
+    unit: 'godz.',
+    min: 0,
+    max: 24,
+    step: 0.25,
+  },
   {
     key: 'wallStubHeightMetres',
     label: 'Wysokość progu po opadnięciu ściany',
