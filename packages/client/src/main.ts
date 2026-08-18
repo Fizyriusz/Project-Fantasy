@@ -98,6 +98,12 @@ const ALL_STOREYS = Number.POSITIVE_INFINITY;
 function updateVisibility(): void {
   const building = playerRoom === null ? null : TEST_WORLD.rooms[playerRoom].building;
 
+  // Which way the camera lies, read off the angle it is settling on rather
+  // than the one it is turning through: a wall should step out of the way as
+  // the turn starts, not halfway through it.
+  const towardsCamera = view.toWorldDirection({ forward: -1, right: 0 });
+  levels.showThrough(playerRoom, towardsCamera);
+
   levels.showUpTo(
     building === null
       ? ALL_STOREYS
@@ -182,6 +188,8 @@ listenForMovementIntent((request) => {
 
 listenForCameraRotation((quarterTurns) => {
   view.rotate(quarterTurns, performance.now());
+  // Different walls are in the way now.
+  updateVisibility();
   // Held keys now point somewhere else in the world, and the simulation is
   // still walking the old way until it hears otherwise.
   sendMoveIntent();
@@ -226,6 +234,7 @@ function applyTuning(values: TuningValues): void {
     values.cameraZoomRestingMetres,
   );
   view.setRotationDuration(values.cameraRotationDurationMs);
+  levels.setStubHeight(values.wallStubHeightMetres);
   view.setFollowHalfLife(values.cameraFollowHalfLifeMs);
   showConnectionStatus();
   playerPosition.setEnabled(values.interpolation);
@@ -246,6 +255,10 @@ if (import.meta.env.DEV) {
     restoreView: () => {
       applyTuning(activeTuning);
     },
+    settle: () => {
+      // Far longer than any drop takes, so everything lands on its target.
+      levels.update(10_000);
+    },
   });
 
   void loadTuning().then((values) => {
@@ -261,8 +274,14 @@ if (import.meta.env.DEV) {
   applyTuning(DEFAULT_TUNING);
 }
 
+// Kept so the walls drop at the same rate whatever the frame rate happens to
+// be. Nothing in the simulation depends on it: this is drawing only.
+let lastFrameMs: number | null = null;
+
 renderer.setAnimationLoop(() => {
   const now = performance.now();
+  levels.update(lastFrameMs === null ? 0 : now - lastFrameMs);
+  lastFrameMs = now;
 
   const position = playerPosition.sample(now);
   if (position !== null) {

@@ -7,6 +7,7 @@ import {
   DEFAULT_ZOOM_MIN_METRES,
   DEFAULT_ZOOM_RESTING_METRES,
 } from '../render/isometricCamera';
+import { DEFAULT_STUB_HEIGHT_METRES } from '../render/tileWalls';
 
 export interface TuningValues {
   walkSpeedMetresPerSecond: number;
@@ -19,6 +20,7 @@ export interface TuningValues {
   cameraZoomRestingMetres: number;
   cameraFollowHalfLifeMs: number;
   cameraRotationDurationMs: number;
+  wallStubHeightMetres: number;
   interpolation: boolean;
   debugGrid: boolean;
 }
@@ -65,11 +67,20 @@ export const DEFAULT_TUNING: TuningValues = {
   cameraZoomRestingMetres: DEFAULT_ZOOM_RESTING_METRES,
   cameraFollowHalfLifeMs: DEFAULT_FOLLOW_HALF_LIFE_MS,
   cameraRotationDurationMs: DEFAULT_ROTATION_DURATION_MS,
+  wallStubHeightMetres: DEFAULT_STUB_HEIGHT_METRES,
   interpolation: true,
   debugGrid: true,
 };
 
 export const SLIDERS: readonly SliderDefinition[] = [
+  {
+    key: 'wallStubHeightMetres',
+    label: 'Wysokość progu po opadnięciu ściany',
+    unit: 'm',
+    min: 0,
+    max: 1.2,
+    step: 0.05,
+  },
   {
     key: 'walkSpeedMetresPerSecond',
     label: 'Prędkość chodu',

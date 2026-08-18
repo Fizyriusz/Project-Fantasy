@@ -31,6 +31,14 @@ export interface ScreenshotParts {
    * angle, and must not leave the game like that.
    */
   readonly restoreView: () => void;
+  /**
+   * Runs any animation the drawing owns straight to its end.
+   *
+   * A photograph should show the settled world, not a frame partway through a
+   * wall dropping — and when the tab is in the background the browser stops
+   * calling the draw loop at all, so an animation would otherwise never move.
+   */
+  readonly settle: () => void;
 }
 
 /**
@@ -50,7 +58,7 @@ export interface ScreenshotParts {
  *     shot({ x: 0.5, z: 0.5, hideCharacter: true, name: 'drzwi' })
  */
 export function installScreenshotTool(parts: ScreenshotParts): void {
-  const { renderer, scene, view, character, restoreView } = parts;
+  const { renderer, scene, view, character, restoreView, settle } = parts;
 
   async function shot(request: ScreenshotRequest = {}): Promise<string> {
     const turns = (((request.turns ?? 0) % 4) + 4) % 4;
@@ -76,6 +84,7 @@ export function installScreenshotTool(parts: ScreenshotParts): void {
     character.visible = !(request.hideCharacter ?? false);
 
     view.update(now);
+    settle();
     renderer.render(scene, view.camera);
     // Read in the same breath as the render. The drawing buffer is not kept
     // between frames, so anything awaited first would photograph nothing.

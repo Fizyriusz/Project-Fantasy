@@ -5,7 +5,8 @@ import { createDoors, type Doors } from './doors';
 import { createTileGrid } from './placeholderWorld';
 import { createTileFloors } from './tileFloors';
 import { createStairs } from './stairs';
-import { createTileWalls } from './tileWalls';
+import { createTileWalls, type TileWalls } from './tileWalls';
+import { hidingGroupOf, type CameraSide } from './occlusion';
 
 /**
  * Height of one storey: exactly as tall as the walls holding it up.
@@ -34,12 +35,25 @@ export interface Levels {
    */
   showUpTo(level: number): void;
 
+  /**
+   * Drops the walls and doorways standing between the camera and the room the
+   * character is in. Null raises them all.
+   */
+  showThrough(room: number | null, camera: CameraSide): void;
+
+  /** How much of a dropped wall is left standing, in metres. */
+  setStubHeight(metres: number): void;
+
+  /** Advances the dropping and rising. Call once per drawn frame. */
+  update(elapsedMs: number): void;
+
   setDebugGridVisible(visible: boolean): void;
 }
 
 export function createLevels(): Levels {
   const group = new Group();
   const doors: Doors[] = [];
+  const walls: TileWalls[] = [];
   const floors = new Map<number, Group>();
   const grids: Group[] = [];
 
@@ -59,10 +73,13 @@ export function createLevels(): Levels {
     const doorsHere = createDoors(map, level);
     doors.push(doorsHere);
 
+    const wallsHere = createTileWalls(map, level);
+    walls.push(wallsHere);
+
     storey.add(
       createTileFloors(map),
       grid,
-      createTileWalls(map),
+      wallsHere.group,
       doorsHere.group,
       createStairs(map, level, LEVEL_HEIGHT_METRES),
     );
@@ -77,6 +94,34 @@ export function createLevels(): Levels {
     showUpTo(level: number): void {
       for (const [storeyLevel, storey] of floors) {
         storey.visible = storeyLevel <= level;
+      }
+    },
+
+    showThrough(room: number | null, camera: CameraSide): void {
+      const group = hidingGroupOf(room);
+      for (const wallsOfStorey of walls) {
+        wallsOfStorey.showThrough(group, camera);
+      }
+      for (const doorsOfStorey of doors) {
+        doorsOfStorey.showThrough(group, camera);
+      }
+    },
+
+    setStubHeight(metres: number): void {
+      for (const wallsOfStorey of walls) {
+        wallsOfStorey.setStubHeight(metres);
+      }
+      for (const doorsOfStorey of doors) {
+        doorsOfStorey.setStubHeight(metres);
+      }
+    },
+
+    update(elapsedMs: number): void {
+      for (const wallsOfStorey of walls) {
+        wallsOfStorey.update(elapsedMs);
+      }
+      for (const doorsOfStorey of doors) {
+        doorsOfStorey.update(elapsedMs);
       }
     },
 
