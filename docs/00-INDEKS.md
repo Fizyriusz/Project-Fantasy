@@ -16,6 +16,7 @@ dotkniętym falą mutacji.
 | `05-ekwipunek-i-crafting.md` | Model przedmiotu, waga, kontenery, recepty, trwałość |
 | `06-roadmapa.md` | Fazy I–IV, backlog, kryteria przejścia |
 | `07-otwarte-kwestie.md` | Decyzje odłożone, parametry do wytestowania |
+| `08-do-obserwacji.md` | Rozwiązania przyjęte warunkowo, do sprawdzenia przy większej zawartości |
 
 ## Jak czytać
 
@@ -23,6 +24,9 @@ Dokumenty 01–02 to fundament — zmiana czegokolwiek tam pociąga za sobą res
 Dokumenty 03–05 to systemy, w dużej mierze niezależne od siebie.
 Dokument 07 to jedyne miejsce, gdzie trzymamy niewiadome. Jeśli coś jest niejasne
 w dokumencie systemowym, powinno być wypisane tam.
+Dokument 08 jest o czymś innym niż 07: tam są rzeczy **nierozstrzygnięte**, tu
+**rozstrzygnięte na razie** — działające, ale czekające na test w docelowych
+warunkach.
 
 ## Konwencje
 
